@@ -1,0 +1,4125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helm — FASTSIGNS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --topbar: 40px;
+  --ink:        #0E0F13;
+  --ink-soft:   #4A4C55;
+  --ink-faint:  #9A9BA3;
+  --red:        #DA2128;
+  --red-deep:   #9E1219;
+  --blue:       #1A4C7E;
+  --blue-deep:  #0A2340;
+  --paper:      #FDFCFA;
+  --rule:       rgba(14,15,19,0.13);
+  --rule-soft:  rgba(14,15,19,0.10);
+
+  --sans: 'Jost', 'Gill Sans', 'Gill Sans MT', Optima, system-ui, sans-serif;
+  --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{height:auto}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-weight:300;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ===== STICKY HEADER =====
+   The centres live here and nowhere else: pick one and every view below —
+   ribbon, rings and schedule — follows it. */
+/* At the very top of the page there is no header — just the words, in ink, on
+   the paper. The bar only draws itself once you begin to scroll. */
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:60;
+  height:var(--topbar);
+  display:flex;
+  align-items:center;
+  gap:18px;
+  padding:0 54px;
+  background:transparent;
+  color:var(--ink);
+  transition:background .45s var(--ease-premium), color .45s var(--ease-premium);
+}
+.topbar.stuck{
+  background:var(--topbar-bg, var(--ink));
+  color:var(--paper);
+}
+.topbar .mark{
+  display:flex;align-items:center;gap:9px;
+  font-size:9px;letter-spacing:.24em;text-transform:uppercase;
+  color:currentColor;white-space:nowrap;
+}
+/* the mark is a grey PNG, so it is flattened to one colour and inverted with
+   the bar — black on paper at the top, paper once the bar draws itself in */
+.topbar .logo{
+  height:13px;width:auto;display:block;
+  filter:brightness(0);
+  transition:filter .45s var(--ease-premium);
+}
+.topbar.stuck .logo{filter:brightness(0) invert(1)}
+.topbar .district-seg{margin-left:auto}
+.topbar .centers{display:flex;gap:2px;flex-wrap:nowrap}
+
+/* no boxes and no fills in the header — a rule under the word is the whole
+   indicator */
+.topbar .seg,
+.topbar .centers{border:0;background:transparent}
+.topbar .seg button,
+.topbar .centers button{
+  position:relative;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  color:currentColor;
+  padding:11px 13px;
+  transition:color .45s var(--ease-premium);
+}
+.topbar .seg button::after,
+.topbar .centers button::after{
+  content:'';
+  position:absolute;left:13px;right:13px;bottom:7px;height:1.5px;
+  background:currentColor;
+  opacity:0;
+  transform:scaleX(.4);
+  transform-origin:center;
+  transition:opacity .35s var(--ease-premium), transform .45s var(--ease-premium);
+}
+.topbar .seg button[aria-pressed="true"]::after,
+.topbar .centers button[aria-pressed="true"]::after{opacity:1;transform:scaleX(1)}
+.topbar .seg button[aria-pressed="true"],
+.topbar .centers button[aria-pressed="true"]{background:transparent;color:currentColor;font-weight:700}
+.topbar .seg button:hover::after,
+.topbar .centers button:hover::after{opacity:.45;transform:scaleX(1)}
+
+/* ===== SCOPE =====
+   One control for the whole page, folded behind the chevron on the far right
+   of the header. */
+.topbar{position:sticky}
+.scope-toggle{
+  margin-left:14px;
+  width:28px;height:28px;flex:none;
+  display:grid;place-items:center;
+  background:transparent;border:0;padding:0;cursor:pointer;
+  color:currentColor;
+}
+.scope-toggle svg{grid-area:1/1;width:20px;height:20px;overflow:visible}
+.scope-toggle path{
+  grid-area:1/1;
+  fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round;
+  transition:opacity .4s var(--ease-premium), transform .5s var(--ease-premium);
+}
+.scope-toggle .up{opacity:0;transform:translateY(3px)}
+.scope-toggle .dn{opacity:1;transform:translateY(0)}
+.scope-toggle[aria-expanded="true"] .dn{opacity:0;transform:translateY(-3px)}
+.scope-toggle[aria-expanded="true"] .up{opacity:1;transform:translateY(0)}
+
+.scope-menu{
+  position:absolute;
+  top:100%;
+  right:54px;
+  z-index:70;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  background:var(--ink);
+  padding:0 22px;
+  max-height:0;
+  overflow:hidden;
+  opacity:0;
+  transition:max-height .5s var(--ease-premium),
+             opacity .35s var(--ease-premium),
+             padding .5s var(--ease-premium);
+  box-shadow:0 18px 40px rgba(14,15,19,0.22);
+}
+.scope-menu.open{max-height:220px;opacity:1;padding:10px 22px 14px}
+.scope-menu button{
+  position:relative;
+  font-family:var(--sans);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+  font-weight:500;border:0;background:transparent;color:var(--paper);
+  padding:9px 0;cursor:pointer;white-space:nowrap;
+}
+.scope-menu button::after{
+  content:'';position:absolute;left:0;right:0;bottom:5px;height:1.5px;
+  background:currentColor;opacity:0;transform:scaleX(.4);transform-origin:right;
+  transition:opacity .35s var(--ease-premium), transform .45s var(--ease-premium);
+}
+.scope-menu button[aria-pressed="true"]{font-weight:700}
+.scope-menu button[aria-pressed="true"]::after{opacity:1;transform:scaleX(1)}
+.scope-menu button:hover::after{opacity:.45;transform:scaleX(1)}
+
+.g-bar-c-label{
+  font-size:9px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--ink);white-space:nowrap;
+}
+
+.scroll-container{
+  position:relative;
+  overflow-x:clip;
+}
+
+/* ===== HERO ===== */
+.hero{
+  position:sticky;
+  top:var(--topbar);
+  left:0;
+  right:0;
+  height:calc(100vh - var(--topbar));
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  background:var(--paper);
+  padding:20px 54px 12px;
+  overflow:hidden;
+}
+
+/* ===== MASTHEAD — TOP ===== */
+.masthead{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:24px;
+  flex-wrap:wrap;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--ink);
+  flex-shrink:0;
+  opacity:1;
+}
+
+.eyebrow{
+  font-size:10px;
+  letter-spacing:.4em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  font-weight:400;
+  margin-bottom:6px
+}
+h1{
+  font-weight:600;
+  font-size:24px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  line-height:1.05;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+}
+h1 em{font-style:normal;font-weight:600}
+.sub{
+  margin-top:6px;
+  font-size:12px;
+  line-height:1.55;
+  color:var(--ink);
+  max-width:130ch;
+  text-wrap:balance;         /* both lines come out the same length */
+  font-weight:400;           /* a third heavier than it was */
+  letter-spacing:.01em;
+  opacity:1;
+  max-height:44px;
+  overflow:hidden;
+}
+.tools{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:8px;
+  transform-origin:100% 100%;
+  flex-shrink:0;
+}
+
+.seg{display:flex;border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.seg button{
+  font-family:var(--sans);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+  font-weight:400;border:0;border-left:1px solid var(--rule);
+  background:transparent;color:var(--ink);
+  padding:6px 14px;cursor:pointer;
+  transition:color .5s ease, background .5s ease
+}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+
+.centers{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:3px}
+.centers button{
+  font-family:var(--sans);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;
+  font-weight:600;border:1px solid var(--rule);border-radius:2px;background:transparent;
+  color:var(--ink);padding:4px 8px;cursor:pointer;
+  display:flex;align-items:center;gap:4px;
+  transition:color .4s ease, border-color .4s ease
+}
+.centers button i{width:5px;height:5px;border-radius:1px;display:block;flex:none;opacity:.5;transition:opacity .4s ease}
+.centers button[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
+.centers button[aria-pressed="true"] i{opacity:1}
+
+.totals{display:flex;gap:26px;align-items:flex-start}
+.tot{text-align:right}
+.tot .v{font-size:26px;font-weight:400;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.005em}
+.tot .k{
+  font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink);margin-top:5px;
+}
+.tot .n{
+  font-size:11px;font-weight:600;color:var(--ink);margin-top:3px;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+
+.notice{
+  display:none;
+  border-left:2px solid var(--ink);
+  padding:6px 12px;
+  margin:4px 0 0;
+  font-size:10px;
+  line-height:1.5;
+  color:var(--ink-soft);
+  background:rgba(14,15,19,0.03);
+  flex-shrink:0;
+}
+.notice.show{display:block}
+.notice b{font-weight:500;color:var(--ink)}
+
+/* ===== RIBBON SECTION ===== */
+.ribbon-section{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  padding:2px 0;
+}
+
+.stack{
+  position:relative;
+  width:100%;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+
+/* ===== STAGE HEADERS — ALWAYS AT TOP ===== */
+.heads-wrap{
+  flex-shrink:0;
+}
+.grid-heads{
+  display:grid;
+  width:100%;
+}
+.stage-head{
+  padding:6px 6px 5px;
+  min-width:0;
+  min-height:44px;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+  align-items:center;
+  text-align:center;
+}
+.stage-idx{
+  font-size:9.5px;
+  color:var(--ink-faint);
+  font-weight:400;
+  font-variant-numeric:tabular-nums;
+  line-height:1;
+  letter-spacing:.1em
+}
+.stage-name{
+  font-size:11.5px;
+  letter-spacing:.045em;
+  text-transform:uppercase;
+  line-height:1.25;
+  color:var(--ink);
+  font-weight:500;
+}
+.stage-head.hold .stage-name,
+.stage-head.hold .stage-idx{
+  color:var(--ink-faint);
+}
+
+/* ===== RIBBON — MIDDLE, FLEXIBLE ===== */
+.ribbon-wrap{
+  flex:1;
+  display:flex;
+  align-items:stretch;
+  min-height:0;
+  padding:2px 0;
+}
+/* This wrapper had no size of its own, so the SVG inside it collapsed to a
+   shrink-to-fit box in the middle of the band. It now stretches edge to edge. */
+#flowWrap{
+  flex:1 1 auto;
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:0;
+  display:block;
+  position:relative;
+}
+.ribbon-wrap svg{
+  display:block;
+  width:100%;
+  height:100%;
+}
+
+/* ===== STAGE FOOT — VALUES + METRICS AT BOTTOM ===== */
+.foots-wrap{
+  flex-shrink:0;
+}
+.grid-foots{
+  display:grid;
+  width:100%;
+}
+.stage-foot{
+  padding:5px 6px 3px;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+}
+
+/* ===== VALUE GROUP — DOLLAR VALUES + COUNTS (these move up) ===== */
+.value-group{
+  transition: transform 1.15s var(--ease-premium);
+  will-change:transform;
+}
+.value-group.rise{
+  transform:translateY(-30px);
+}
+
+.foot-value{
+  max-width:100%;
+  font-size:26px;
+  font-weight:300;
+  line-height:1;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.005em;
+}
+.foot-items{
+  font-size:10px;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  margin-top:2px;
+  font-weight:500;
+}
+
+/* ===== METRICS WRAPPER ===== */
+.metrics-wrapper{
+  position:relative;
+  overflow:hidden;
+  margin-top:0;
+  padding-top:0;
+  max-height:0;
+  opacity:0;
+  transition: max-height 1.15s var(--ease-premium), opacity 0.95s var(--ease-premium), margin-top 1.15s var(--ease-premium), padding-top 1.15s var(--ease-premium);
+  pointer-events:none;
+}
+.metrics-wrapper.revealed{
+  max-height:340px;
+  opacity:1;
+  margin-top:4px;
+  padding-top:3px;
+  pointer-events:auto;
+}
+
+.metric{
+  width:100%;
+  min-width:0;
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:6px;
+  padding:3.5px 0;
+  border-top:1px solid var(--rule-soft);
+  font-variant-numeric:tabular-nums;
+  transform:translateY(10px);
+  opacity:0;
+  transition: transform 0.85s var(--ease-premium), opacity 0.75s var(--ease-premium);
+}
+.metrics-wrapper.revealed .metric{
+  transform:translateY(0);
+  opacity:1;
+}
+.metrics-wrapper.revealed .metric:nth-child(1){transition-delay:0.06s}
+.metrics-wrapper.revealed .metric:nth-child(2){transition-delay:0.12s}
+.metrics-wrapper.revealed .metric:nth-child(3){transition-delay:0.18s}
+.metrics-wrapper.revealed .metric:nth-child(4){transition-delay:0.24s}
+.metrics-wrapper.revealed .metric:nth-child(5){transition-delay:0.30s}
+.metrics-wrapper.revealed .metric:nth-child(6){transition-delay:0.36s}
+.metrics-wrapper.revealed .metric:nth-child(7){transition-delay:0.42s}
+
+.metric .k{
+  font-size:9.5px;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  white-space:nowrap;
+  font-weight:500;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:74px;
+}
+.metric .v{
+  font-size:12.5px;
+  color:var(--ink);
+  font-weight:500;
+  white-space:nowrap;
+  flex:none;
+}
+.metric.share .v{color:var(--ink);font-weight:600}
+.metric.late .k{color:var(--ink);font-weight:600}
+.metric.late .v{color:var(--ink);font-weight:600}
+.metric .n{font-size:9.5px;color:var(--ink-soft);margin-left:2px;font-weight:400}
+
+/* ===== BOARDS =====
+   Four dense views, sharing one grid rhythm. */
+.board{margin-top:96px}
+.board .panel-header{margin-bottom:24px;align-items:baseline}
+.board-sub{
+  font-size:11px;font-weight:500;letter-spacing:.02em;
+  color:var(--ink-soft);
+  text-align:right;max-width:76ch;line-height:1.55;
+  text-wrap:balance;
+}
+
+.matrix{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.matrix .mc{
+  background:var(--paper);
+  padding:9px 11px;
+  min-height:46px;
+  display:flex;flex-direction:column;justify-content:center;gap:2px;
+}
+.matrix .mc.hd{
+  background:var(--paper);
+  font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink);min-height:42px;justify-content:flex-end;
+}
+.matrix .mc.hd.r{align-items:flex-end;text-align:right}
+.matrix .mc.rowhd{
+  font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink);
+}
+
+.matrix .mc .v{
+  font-size:13px;font-weight:600;color:var(--ink);
+  font-variant-numeric:tabular-nums;text-align:right;line-height:1.1;
+}
+.matrix .mc .n{
+  font-size:9.5px;font-weight:500;color:var(--ink-soft);
+  font-variant-numeric:tabular-nums;text-align:right;
+}
+.matrix .mc.zero .v{color:var(--ink-faint);font-weight:400}
+.matrix .mc.zero .n{display:none}
+.matrix .mc.late .v{color:var(--red-deep)}
+.matrix .mc.tot{background:#F5F3EF}
+.matrix .mc.today{box-shadow:inset 0 2px 0 var(--ink)}
+.matrix .mc.weekend{background:#F9F7F4}
+
+/* ===== SCORECARDS ===== */
+.score{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.score .sr{display:contents}
+.score .sc{
+  background:var(--paper);padding:11px 13px;
+  display:flex;align-items:center;
+  font-size:11.5px;font-weight:500;color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+.score .sc.r{justify-content:flex-end}
+.score .sc.hd{
+  font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink);
+}
+.score .sc.name{font-weight:600;gap:8px}
+.score .sc.name i{width:7px;height:7px;border-radius:1px;flex:none}
+
+.score .sc.late{color:var(--red-deep);font-weight:600}
+.score .sc.tot{background:#F5F3EF;font-weight:700}
+.score .bar{
+  position:relative;height:5px;border-radius:2.5px;
+  background:rgba(14,15,19,0.10);flex:1;overflow:hidden;
+}
+.score .bar b{position:absolute;left:0;top:0;bottom:0;background:var(--red);border-radius:2.5px}
+
+/* ===== TOP TEN =====
+   Not a table — the same row language as the schedule, ranked. */
+.top-list{display:flex;flex-direction:column}
+.t-row{
+  display:grid;
+  grid-template-columns:44px minmax(170px,0.95fr) minmax(240px,1.6fr) 128px 92px 62px 78px 84px;
+  gap:13px;
+  align-items:center;
+  height:44px;
+  border-bottom:1px solid rgba(14,15,19,0.055);
+  transition:background .3s ease;
+}
+.t-row:hover{background:rgba(14,15,19,0.025)}
+/* column names above a ranked list, no rule beneath them */
+.t-row.hdr{height:32px;border-bottom:0;background:none}
+.t-row.hdr:hover{background:none}
+.t-row.hdr span{
+  font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.t-row.hdr .rt{text-align:right}
+.t-rank{
+  font-size:13px;font-weight:300;color:var(--ink-faint);
+  font-variant-numeric:tabular-nums;letter-spacing:.04em;
+}
+.t-main{display:flex;align-items:baseline;gap:9px;min-width:0}
+.t-main a, .t-main .num{
+  font-size:13px;font-weight:600;color:var(--ink);
+  font-variant-numeric:tabular-nums;text-decoration:none;flex:none;
+  transition:color .3s ease;
+}
+.t-main a:hover{color:var(--red)}
+.t-main .cust{
+  font-size:12px;font-weight:400;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.t-main .ct{font-size:10px;color:var(--ink-faint);flex:none}
+.t-desc{
+  font-size:11.5px;font-weight:500;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.t-ctr{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:500;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);white-space:nowrap}
+.t-ctr i{width:7px;height:7px;border-radius:1px;flex:none}
+.t-rep{
+  display:flex;flex-direction:column;line-height:1.15;min-width:0;
+  font-size:10.5px;font-weight:500;color:var(--ink);
+}
+.t-rep span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t-val{font-size:13px;font-weight:600;text-align:right;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.t-due{
+  font-size:11px;font-weight:600;text-align:right;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-soft);font-variant-numeric:tabular-nums;
+}
+.t-due.late{color:var(--red-deep)}
+.t-due.today{color:var(--ink)}
+
+/* a client and the jobs behind it */
+.t-group{border-bottom:1px solid rgba(14,15,19,0.055)}
+.t-row.head{cursor:pointer;border-bottom:0}
+.t-row.head .t-main .num{font-size:13.5px;font-weight:700}
+.t-late{
+  font-size:10.5px;font-weight:600;text-align:right;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--red-deep);font-variant-numeric:tabular-nums;
+}
+.t-jobs{height:0;overflow:hidden;opacity:0;transition:height .5s var(--ease-premium),opacity .4s var(--ease-premium)}
+.t-group.open .t-jobs{opacity:1}
+/* a job under a client carries only its number on the left, so the
+   description takes the room the client name was using */
+.t-row.sub{
+  height:36px;border-bottom:0;background:rgba(14,15,19,0.014);
+  grid-template-columns:44px 132px minmax(420px,2.8fr) 128px 96px 62px 78px 84px;
+}
+.t-row.sub .t-desc{white-space:normal;line-height:1.3}
+.t-row.sub .t-main a,.t-row.sub .t-main .num{font-size:11.5px;font-weight:600}
+.t-row.sub .t-rep{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint)}
+.t-row.sub .t-val{font-size:11.5px}
+
+/* ===== CHARTS =====
+   A proper column chart: scaled axis, gridlines, stacked columns, labels. */
+.chart{margin-top:38px;max-width:74%;margin-left:auto;margin-right:auto}
+.chart-plot{
+  position:relative;
+  height:230px;
+  margin-top:16px;
+  padding-left:62px;
+  border-bottom:1px solid var(--ink);
+}
+.chart-grid{position:absolute;left:62px;right:0;top:0;bottom:0;pointer-events:none}
+.chart-grid i{
+  position:absolute;left:0;right:0;height:1px;background:var(--rule-soft);
+}
+.chart-grid u{
+  position:absolute;left:-62px;width:54px;text-align:right;
+  transform:translateY(-50%);
+  font-size:9.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);
+  font-variant-numeric:tabular-nums;font-style:normal;
+}
+.chart-cols{
+  position:relative;height:100%;
+  display:flex;align-items:stretch;gap:16px;
+}
+.chart-col{flex:1;position:relative;height:100%}
+.chart-col .stack{
+  position:absolute;left:0;right:0;bottom:0;
+  width:38px;margin:0 auto;
+  border-radius:3px 3px 0 0;overflow:hidden;
+  background:linear-gradient(180deg,var(--blue),var(--blue-deep));
+  transition:height .8s var(--ease-premium);
+  cursor:default;
+}
+.chart-col .stack b{
+  position:absolute;left:0;right:0;bottom:0;
+  background:linear-gradient(180deg,var(--red),var(--red-deep));
+}
+/* the figure stands clear above its column */
+.chart-col .cval{
+  position:absolute;left:0;right:0;
+  margin-bottom:11px;
+  text-align:center;
+  font-size:11px;font-weight:600;color:var(--ink);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+  transition:bottom .8s var(--ease-premium);
+}
+.chart-col:hover .stack{filter:brightness(1.1)}
+.chart-x{
+  display:flex;gap:16px;margin-top:9px;padding-left:62px;
+}
+.chart-x span{
+  flex:1;text-align:center;
+  font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-soft);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.vbars-legend{
+  display:flex;gap:22px;margin-top:14px;padding-left:62px;
+  font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.vbars-legend span{display:flex;align-items:center;gap:7px}
+.vbars-legend i{width:14px;height:6px;border-radius:2px}
+
+/* ===== TREND ===== */
+.trend{margin-top:26px;max-width:74%;margin-left:auto;margin-right:auto}
+.trend svg{width:100%;height:240px;overflow:visible;display:block}
+.trend .grid{stroke:var(--rule-soft);stroke-width:1}
+.trend .axis{stroke:var(--ink);stroke-width:1}
+.trend text{
+  font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:.05em;
+  fill:var(--ink-soft);
+}
+.trend text.y{text-anchor:end}
+.trend text.x{text-anchor:middle}
+.trend .lineOpen{fill:none;stroke:var(--blue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.trend .lineLate{fill:none;stroke:var(--red);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.trend .dot{fill:var(--paper);stroke-width:2}
+.trend .areaOpen{fill:var(--blue);opacity:.07}
+.trend-empty{
+  padding:40px 0;text-align:center;
+  font-size:11.5px;font-weight:500;letter-spacing:.06em;color:var(--ink-soft);
+}
+
+/* ===== HOVER CARD ===== */
+.g-tip{
+  position:fixed;
+  z-index:80;
+  pointer-events:none;
+  background:var(--ink);
+  color:var(--paper);
+  padding:12px 15px;
+  border-radius:2px;
+  box-shadow:0 10px 34px rgba(14,15,19,0.26);
+  font-size:12px;
+  font-weight:500;
+  line-height:1.65;
+  letter-spacing:.03em;
+  max-width:340px;
+  opacity:0;
+  transform:translateY(4px);
+  transition:opacity .2s var(--ease-premium), transform .2s var(--ease-premium);
+}
+.g-tip.on{opacity:1;transform:translateY(0)}
+.g-tip .h{
+  font-size:14px;font-weight:700;letter-spacing:.05em;
+  display:block;margin-bottom:4px;
+}
+.g-tip .c{display:block;margin-bottom:8px;font-size:12.5px;font-weight:500;color:var(--paper)}
+.g-tip .k{
+  display:flex;justify-content:space-between;gap:26px;
+  font-size:11px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;
+}
+.g-tip .k span:first-child{color:var(--paper);font-weight:400}
+.g-tip .k span:last-child{color:var(--paper);font-weight:600}
+.g-tip .late{color:#F5A3A7;font-weight:600}
+
+/* ===== RULES ===== */
+.rules{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:3;
+}
+.rules span{
+  position:absolute;top:0;bottom:0;width:1px;
+  background:rgba(118,123,133,0.25);
+  transform:translateX(-0.5px)
+}
+
+/* ===== SCROLL SPACER ===== */
+.scroll-spacer{
+  height:52vh;
+  pointer-events:none;
+  position:relative;
+  z-index:0;
+}
+
+/* ===== DETAILS PANEL ===== */
+.details-panel{
+  position:relative;
+  z-index:5;
+  background:var(--paper);
+  padding:78px 54px 88px;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  margin-top:-1px;
+  border-top:1px solid var(--rule);
+  opacity:0;
+  will-change:opacity;
+  pointer-events:none;
+}
+.details-panel.visible{
+  pointer-events:auto;
+}
+
+.details-panel .panel-header{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  margin-bottom:44px;
+  padding-bottom:12px;
+}
+/* one section title for every chart on the page */
+.sec-title .eyebrow{margin-bottom:6px}
+.panel-header h2,
+.sec-title h2{
+  font-weight:600;
+  font-size:24px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--ink);
+  line-height:1.1;
+}
+/* Outside the pinned frame: it introduces the section, scrolls away with the
+   page, and leaves the stage menu to meet the header. */
+.details-panel .panel-header.sched-title{
+  margin:86px 0 20px;
+  padding:0 0 10px;
+}
+.details-panel .panel-header .panel-sub{
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  font-weight:600;
+}
+
+.details-grid{
+  display:grid;
+  grid-template-columns:repeat(5, 1fr);
+  grid-auto-rows:1fr;
+  gap:52px 20px;      /* a clear break between the two rows of five */
+  justify-items:center;
+  align-items:start;          /* every ring starts at the same line */
+  align-content:stretch;
+  flex:1;
+  min-height:0;
+}
+
+/* ===== STAGE RINGS =====
+   No boxes. Each stage is a ring carrying its own figure, the two districts
+   drawn as arcs of it. */
+.ring-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;  /* not centred — a short legend must not lift it */
+  gap:12px;
+  width:100%;
+  opacity:0;
+  transform:translateY(16px);
+  transition:opacity .7s var(--ease-premium), transform .7s var(--ease-premium);
+}
+.details-panel.visible .ring-card{opacity:1;transform:translateY(0)}
+.details-panel.visible .ring-card:nth-child(1){transition-delay:0.04s}
+.details-panel.visible .ring-card:nth-child(2){transition-delay:0.08s}
+.details-panel.visible .ring-card:nth-child(3){transition-delay:0.12s}
+.details-panel.visible .ring-card:nth-child(4){transition-delay:0.16s}
+.details-panel.visible .ring-card:nth-child(5){transition-delay:0.20s}
+.details-panel.visible .ring-card:nth-child(6){transition-delay:0.24s}
+.details-panel.visible .ring-card:nth-child(7){transition-delay:0.28s}
+.details-panel.visible .ring-card:nth-child(8){transition-delay:0.32s}
+.details-panel.visible .ring-card:nth-child(9){transition-delay:0.36s}
+.details-panel.visible .ring-card:nth-child(10){transition-delay:0.40s}
+
+.ring-wrap{position:relative;width:100%;max-width:190px;aspect-ratio:1}
+.ring-wrap svg{
+  width:100%;height:100%;
+  transform:rotate(-90deg);            /* start at twelve o'clock */
+}
+.ring-wrap circle{fill:none;stroke-width:6;stroke-linecap:butt}
+.ring-wrap .track{stroke:rgba(14,15,19,0.07)}
+.ring-wrap .arc{
+  transition:stroke-dasharray 1.1s var(--ease-premium);
+}
+.ring-wrap .arc.valley{stroke:var(--red)}
+.ring-wrap .arc.southbay{stroke:var(--blue)}
+
+.ring-mid{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;text-align:center;padding:0 14px;
+}
+.ring-mid .v{
+  font-size:30px;font-weight:300;letter-spacing:.005em;
+  font-variant-numeric:tabular-nums;color:var(--ink);line-height:1;
+}
+.ring-mid .n{
+  font-size:11px;font-weight:600;color:var(--ink);
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;
+}
+
+.ring-card figcaption{
+  display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;
+}
+.ring-card .nm{
+  font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink);line-height:1.25;text-align:center;
+  margin-bottom:2px;
+}
+.ring-card .sp{display:flex;flex-direction:column;gap:2px}
+.ring-card .sp b{
+  display:flex;align-items:center;gap:6px;
+  font-size:10.5px;font-weight:500;color:var(--ink);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.ring-card .sp b.none{color:var(--ink-faint);font-weight:400}
+.ring-card .sp i{width:7px;height:7px;border-radius:50%;flex:none}
+
+.legend{
+  display:flex;
+  gap:26px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin-top:28px;
+  padding-top:14px;
+  border-top:1px solid var(--rule);
+  font-size:10.5px;
+  font-weight:600;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  color:var(--ink-soft)
+}
+.legend .k{display:flex;align-items:center;gap:7px}
+.legend .sw{width:20px;height:6px;border-radius:1px}
+.unmapped{
+  display:none;
+  margin-top:16px;
+  padding:10px 14px;
+  border-left:2px solid var(--red);
+  background:rgba(218,33,40,0.04);
+  font-size:11.5px;
+  line-height:1.6;
+  color:var(--ink);
+  font-weight:500
+}
+.unmapped.show{display:block}
+.unmapped b{font-weight:600;color:var(--ink)}
+.unmapped code{font-family:var(--sans);font-weight:600;color:var(--ink);letter-spacing:.02em}
+.stamp{
+  margin-top:12px;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  color:var(--ink-soft)
+}
+
+/* ===== LOADING ===== */
+.skel .foot-value,.skel .metric .v{color:var(--ink-faint)}
+body.loading .hero{opacity:.35}
+body.loading .stage-foot{animation:breathe 2.4s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.5}50%{opacity:.8}}
+@media (prefers-reduced-motion:reduce){
+  body.loading .stage-foot{animation:none;opacity:.6}
+}
+
+
+/* ===== SCHEDULE HEADER BANDS =====
+   Three layers, after the Rolls-Royce showroom: a dark band saying where you
+   are, a light band of the stages you can move between, and a light band of
+   the centres beneath it. */
+.g-bar{flex:none}
+.g-bar-b, .g-bar-c{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:0 18px;
+  border-bottom:1px solid var(--rule);
+  background:var(--paper);
+}
+.g-bar-b{height:36px}
+.g-bar-c{height:34px}
+/* the two menu bands fly down and up — closed by default so the chart keeps
+   the room, and they stay put once opened */
+.g-bar-b, .g-bar-c{
+  overflow:hidden;
+  transition:height .55s var(--ease-premium),
+             opacity .4s var(--ease-premium),
+             border-bottom-width .55s var(--ease-premium);
+}
+
+.g-bar-c-right{display:flex;align-items:center;gap:6px;margin-left:auto}
+.g-bar-c-right{margin-left:auto}
+
+/* the stage menu — the active one underlined, as their model range is */
+.g-stages{display:flex;align-items:stretch;gap:0;min-width:0;overflow:hidden}
+.g-stages button{
+  position:relative;
+  font-family:var(--sans);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
+  font-weight:600;border:0;background:transparent;color:var(--ink);
+  padding:0 11px;height:36px;cursor:pointer;white-space:nowrap;
+}
+.g-stages button b{
+  margin-left:5px;font-weight:400;font-size:8.5px;color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+.g-stages button i{
+  position:absolute;left:11px;right:11px;bottom:0;height:2px;
+  background:var(--ink);opacity:0;transform:scaleX(.4);
+  transform-origin:center;
+  transition:opacity .4s var(--ease-premium), transform .4s var(--ease-premium);
+}
+.g-stages button[aria-current="true"] i{opacity:1;transform:scaleX(1)}
+
+.g-bar-c .centers{display:flex;gap:3px;flex-wrap:nowrap;overflow:hidden}
+
+/* ===== SCHEDULE ===== */
+.gantt{
+  --c1:250px;   /* order + customer */
+  --c2:96px;    /* centre */
+  --c5:76px;    /* salesperson */
+  --c3:54px;    /* progress */
+  --c4:54px;    /* value */
+  --c6:72px;    /* due */
+  --gap:10px;
+  --row:31px;
+  --pan:0px;    /* live horizontal pan of the time track */
+  --track-left:calc(var(--c1) + var(--c2) + var(--c5) + var(--c3) + var(--c4) + 5*var(--gap));
+  --track-right:calc(var(--c6) + var(--gap));
+}
+
+/* shared column rhythm */
+.g-grid{
+  display:grid;
+  grid-template-columns:var(--c1) var(--c2) var(--c5) var(--c3) var(--c4) 1fr var(--c6);
+  gap:var(--gap);
+  align-items:center;
+}
+
+.g-colhead{
+  padding-bottom:6px;
+  border-bottom:1px solid var(--ink);
+}
+.g-colhead > span{
+  font-size:10px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  font-weight:600;
+}
+.g-colhead > span.r{text-align:right}
+
+.gantt-axis{position:relative;height:14px;overflow:hidden}
+#gantt.byday .gantt-axis{height:32px;overflow:visible}
+#gantt.byday .gantt-axis span{
+  display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.15;
+}
+#gantt.byday .gantt-axis span b{
+  font-size:8px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);
+}
+#gantt.byday .gantt-axis span em{
+  font-style:normal;font-size:11px;font-weight:600;letter-spacing:0;color:var(--ink);
+}
+
+#gantt.byday .gantt-axis span.now b{color:var(--ink);font-weight:700}
+#gantt.byday .gantt-axis span.now em{color:var(--ink);font-weight:700}
+.gantt-axis .shift{position:absolute;inset:0;transform:translateX(var(--pan));}
+.gantt-axis span{
+  position:absolute;
+  bottom:0;
+  transform:translateX(-50%);
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  font-weight:500;
+  white-space:nowrap;
+}
+.gantt-axis span.now{color:var(--ink);font-weight:700}
+
+.gantt-plot{position:relative}
+.gantt-lines{
+  position:absolute;
+  top:0;bottom:0;
+  z-index:0;
+  left:var(--track-left);
+  right:var(--track-right);
+  pointer-events:none;
+  z-index:0;
+}
+.gantt-lines .shift{position:absolute;inset:0;transform:translateX(var(--pan))}
+.gantt-lines u{
+  position:absolute;top:0;bottom:0;
+  background:rgba(14,15,19,0.028);
+}
+.gantt-lines i{
+  position:absolute;top:0;bottom:0;width:1px;
+  background:rgba(118,123,133,0.13);
+  transform:translateX(-0.5px);
+  transform-origin:top center;
+}
+.gantt-lines i.now{background:rgba(14,15,19,0.34)}
+
+.gantt-body{position:relative;z-index:1}
+
+/* ===== PINNED FRAME =====
+   While pinned the schedule is exactly one screen. Everything that isn't the
+   open stage gets out of the way: the description hides, the stage titles
+   become a single rail of chips, and the open stage takes all the rest. */
+#gantt.pinned{
+  height:calc(100vh - var(--topbar));
+  display:flex;
+  flex-direction:column;
+  padding:0 0 18px;
+  background:var(--paper);
+}
+#gantt.pinned .g-colhead{margin-top:12px}
+#gantt.pinned .g-count{display:none}
+#gantt.pinned .gantt-plot{flex:1;min-height:0}   /* rules run the full frame */
+/* The ladder occupies the whole frame: whatever the open stage does not use is
+   shared out as air between the closed titles, so nothing crowds the top and
+   nothing is left blank at the bottom. */
+#gantt.pinned .gantt-body{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+
+#gantt.pinned .g-sec{flex:0 0 auto}
+#gantt.pinned .g-sec{border-top:0}
+/* The menu across the top already lists every stage, so the frame carries only
+   the stage being read and the one coming next — the other titles give their
+   height to the rows. */
+#gantt.pinned.tight .g-sec:not(.open):not(.next){display:none}
+#gantt.pinned.tight .g-sec.next .g-sechead{opacity:.55}
+#gantt.pinned.tight .g-sec.next .g-sechead:hover{opacity:1}
+
+/* closed titles are kept slim so the open stage gets the screen */
+#gantt.pinned .g-sechead{padding:3px 0}
+#gantt.pinned .g-sechead .t{font-size:12.5px}
+#gantt.pinned .g-sec.open .g-sechead{padding:7px 0 6px}
+#gantt.pinned .g-sec.open .g-sechead .t{font-size:17px}
+#gantt.pinned .g-sec:not(.open) .g-sechead .m{opacity:.75}
+
+
+/* ===== ONE ORDER, ONE ROW, WORST FIRST ===== */
+.g-row{
+  height:var(--row);
+  border-bottom:1px solid var(--rule-soft);
+  transition:background .3s ease;
+}
+.g-row:hover{background:rgba(14,15,19,0.028)}
+.g-row > *{min-width:0}
+
+.g-ord{display:flex;align-items:baseline;gap:7px;white-space:nowrap;min-width:0}
+.g-ord .num{
+  font-size:13px;font-weight:600;color:var(--ink);
+  font-variant-numeric:tabular-nums;flex:none;
+  text-decoration:none;                 /* never underlined */
+  transition:color .3s ease;
+}
+a.num:hover{color:var(--red)}
+.g-ord .cust{
+  font-size:12px;font-weight:400;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;
+}
+.g-ord .ct{font-size:10.5px;color:var(--ink-faint);flex:none;font-variant-numeric:tabular-nums}
+
+.g-ctr{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.06em;
+  font-weight:500;text-transform:uppercase;color:var(--ink-soft);white-space:nowrap;overflow:hidden}
+.g-ctr i{width:7px;height:7px;border-radius:1px;flex:none}
+/* the name breaks after the first word so it costs a column, not a corridor */
+.g-rep{
+  display:flex;flex-direction:column;justify-content:center;
+  line-height:1.15;min-width:0;
+}
+.g-rep b, .g-rep span{
+  font-size:10.5px;font-weight:500;color:var(--ink);letter-spacing:.01em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.g-stg{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);
+  font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-val{font-size:12px;font-weight:500;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+
+/* the time cue: graphite from entry to due, claret from due to today */
+.g-track{position:relative;height:var(--row);overflow:hidden;cursor:grab;touch-action:pan-y}
+.g-track:active{cursor:grabbing}
+.g-shift{position:absolute;inset:0;transform:translateX(var(--pan))}
+.g-span{
+  position:absolute;top:50%;height:9px;margin-top:-4.5px;
+  background:linear-gradient(90deg,var(--blue-deep),var(--blue));
+  min-width:11px;            /* taken and due the same day still reads */
+}
+.g-span.clip-l::before{
+  content:'';position:absolute;left:2px;top:2px;bottom:2px;width:1px;
+  background:rgba(253,252,250,.55);box-shadow:3px 0 0 rgba(253,252,250,.55);
+}
+.g-over{
+  position:absolute;top:50%;height:9px;margin-top:-4.5px;
+  background:linear-gradient(90deg,var(--red-deep),var(--red));
+}
+
+/* ===== PROGRESS ===== */
+.g-prog{display:flex;align-items:center;gap:7px}
+.g-prog .ring{width:15px;height:15px;flex:none;transform:rotate(-90deg)}
+.g-prog .ring circle{fill:none;stroke-width:3}
+.g-prog .ring .t{stroke:rgba(14,15,19,0.13)}
+.g-prog .ring .f{stroke:var(--ink);stroke-linecap:butt}
+.g-prog .ring.done .f{stroke:var(--blue)}
+.g-prog span{font-size:11px;font-weight:600;color:var(--ink-soft);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ===== LINE ITEMS ===== */
+.g-item{border-bottom:1px solid var(--rule-soft)}
+.g-item .g-row{border-bottom:0;cursor:pointer}
+.g-item.open{background:rgba(14,15,19,0.022)}
+.g-sub{height:0;overflow:hidden;opacity:0}
+.g-subin{padding:2px 0 9px}
+.g-line{
+  display:grid;
+  grid-template-columns:var(--c1) var(--c2) var(--c5) var(--c3) var(--c4) 1fr var(--c6);
+  gap:var(--gap);
+  align-items:center;
+  height:27px;
+}
+/* A line item is an annotation on its order, not another bar: a 2px rule with
+   a tick standing on its due date. */
+.g-track.sub{height:27px}
+.g-track.sub .g-span,
+.g-track.sub .g-over{
+  height:2.5px;margin-top:-1.25px;border-radius:1.5px !important;min-width:5px;
+}
+.g-track.sub .g-span{background:var(--blue-deep);opacity:1}
+.g-track.sub .g-over{background:var(--red);opacity:1}
+/* the tick belongs to line items only — the order's own bar already ends
+   on its due date */
+.g-tick{display:none}
+.g-track.sub .g-tick{
+  display:block;
+  position:absolute;top:50%;width:1.5px;height:11px;margin-top:-5.5px;
+  background:var(--blue-deep);opacity:1;
+}
+.g-track.sub .g-tick.late{background:var(--red);opacity:1}
+
+/* the bracket: a hairline running from the order down past its last line */
+.g-sub{position:relative}
+.g-subin{position:relative}
+.g-subin::before{
+  content:'';
+  position:absolute;
+  left:24px;top:0;bottom:11px;
+  width:1px;
+  background:var(--ink-faint);
+}
+.g-line{position:relative}
+.g-line .pd::before{
+  content:'';
+  position:absolute;
+  left:24px;top:50%;width:12px;height:1px;
+  background:var(--ink-faint);
+}
+.g-line .pd{
+  display:flex;align-items:baseline;gap:10px;min-width:0;padding-left:44px;
+  grid-column:1 / span 4;      /* runs all the way to the value column */
+}
+/* sits on the line, its last letter landing on the line's end */
+.g-endlabel{
+  position:absolute;
+  bottom:50%;
+  margin-bottom:2px;
+  transform:translateX(-100%);
+  font-size:9.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink);white-space:nowrap;pointer-events:none;
+}
+.g-line .p{
+  font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+.g-line .d{
+  font-size:11.5px;color:var(--ink);font-weight:500;letter-spacing:.005em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.g-line .s{
+  font-size:10px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.g-line .v{font-size:11px;font-weight:500;text-align:right;color:var(--ink-soft);
+  font-variant-numeric:tabular-nums;grid-column:5}
+.g-line .g-track{grid-column:6}
+.g-line .u{
+  font-size:10.5px;font-weight:500;text-align:right;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap;grid-column:7;
+}
+.g-line .u.late{color:var(--red-deep);font-weight:600}
+
+.g-due{
+  font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;text-align:right;
+  color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.g-due.late{color:var(--red-deep);font-weight:600}
+.g-due.today{color:var(--ink);font-weight:600}
+
+/* ===== STAGE SECTIONS ===== */
+.g-sec{border-top:1px solid var(--rule)}
+.g-sec:first-child{border-top:0}
+
+.g-sechead{
+  position:relative;
+  z-index:3;
+  /* transparent so the day rules run straight up through the ladder —
+     only the pinned open title needs a ground of its own */
+  background:transparent;
+  display:flex;
+  align-items:baseline;
+  gap:14px;
+  padding:8px 0 7px;
+  cursor:pointer;
+  transition:padding .5s var(--ease-premium);
+}
+.g-sec.open .g-sechead{padding:13px 0 11px;background:var(--paper)}
+.g-sechead i{width:8px;height:8px;border-radius:1px;flex:none;transform:translateY(-1px)}
+.g-sechead .t{
+  font-size:13px;
+  font-weight:600;
+  transition:font-size .5s var(--ease-premium), letter-spacing .5s var(--ease-premium);
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--ink);
+  white-space:nowrap;
+}
+.g-sec.open .g-sechead .t{font-size:18px;letter-spacing:.15em}
+.g-sechead:hover .t{color:var(--red-deep)}
+.g-sechead .m{
+  font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);
+  font-variant-numeric:tabular-nums;
+}
+.g-sechead .m b{font-weight:600;color:var(--red-deep)}
+.g-sechead .x{
+  margin-left:auto;
+  font-size:9px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);
+  white-space:nowrap;
+}
+
+.g-secbody{overflow:hidden;height:0;opacity:0}
+.g-secinner{overflow-y:auto;overflow-x:hidden;max-height:100%}
+.g-secinner::-webkit-scrollbar{width:3px}
+.g-secinner::-webkit-scrollbar-thumb{background:rgba(14,15,19,0.18)}
+
+.g-tag{
+  font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-faint);flex:none;
+}
+
+.g-count{
+  margin-top:14px;
+  font-size:9.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);
+}
+.g-empty{
+  padding:28px 0;font-size:10.5px;color:var(--ink-faint);
+  letter-spacing:.08em;text-transform:uppercase;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width:1100px){
+  .hero{padding:14px 20px 10px}
+  .details-panel{padding:30px 20px 40px}
+  .g-bar-b,.g-bar-c{padding:0 12px}
+  h1{font-size:26px}
+  .stage-name{font-size:9px}
+  .foot-value{font-size:20px}
+  .foot-items{font-size:8.5px}
+  .metric .k{font-size:8px;max-width:56px}
+  .metric .v{font-size:10.5px}
+  .metric .n{font-size:8px}
+  .stage-head{padding:4px 4px 3px;min-height:36px}
+  .stage-idx{font-size:8px}
+  .stage-foot{padding:3px 4px 2px}
+  .details-grid{grid-template-columns:repeat(3, 1fr);gap:12px}
+    .totals{gap:14px}
+  .tot .v{font-size:19px}
+  .value-group.rise{transform:translateY(-22px)}
+  .metrics-wrapper.revealed{max-height:280px}
+  .gantt{--c1:210px;--c2:0px;--c5:66px;--c3:50px;--c4:54px;--gap:10px}
+  .gantt .g-ctr{display:none}
+  }
+@media (max-width:640px){
+  .hero{padding:8px 12px 6px}
+  .hero .tools{width:100%;align-items:stretch}
+  .totals{justify-content:space-around}
+  .masthead{flex-direction:column;align-items:stretch;gap:10px}
+  .sub{font-size:9px}
+  h1{font-size:16px}
+  .details-grid{grid-template-columns:repeat(2, 1fr)}
+  .details-panel{padding:20px 12px 30px}
+  .centers button{font-size:6px;padding:2px 5px}
+  .seg button{font-size:6.5px;padding:4px 8px}
+  .stage-name{font-size:7px}
+  .foot-value{font-size:15px}
+  .foot-items{font-size:7px}
+  .metric .k{font-size:6.5px;max-width:38px}
+  .metric .v{font-size:8.5px}
+  .metric .n{font-size:6.5px}
+  .value-group.rise{transform:translateY(-16px)}
+  .metrics-wrapper.revealed{max-height:220px}
+  .stage-idx{font-size:6.5px}
+  .stage-head{min-height:26px;padding:3px 2px 2px}
+  .gantt{--c1:150px;--c2:0px;--c5:0px;--c3:0px;--c4:0px;--c6:58px;--gap:8px;--row:26px}
+  .gantt .g-ctr,.gantt .g-prog,.gantt .g-val,.gantt .g-rep{display:none}
+  }
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+  .details-panel{opacity:1;transform:none;pointer-events:auto}
+    .metrics-wrapper{opacity:1;max-height:300px;pointer-events:auto}
+  .metrics-wrapper .metric{opacity:1;transform:none}
+  .value-group.rise{transform:none}
+  .masthead{opacity:1!important}
+  .tools{opacity:1!important;transform:none!important}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar" id="topbar">
+  <span class="mark">
+    <img class="logo" alt="FASTSIGNS" src="data:image/png;base64,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">
+    <span>· Helm</span>
+  </span>
+  <div class="seg district-seg" role="group" aria-label="District">
+    <button data-f="districts" aria-pressed="true">Both Districts</button>
+    <button data-f="valley" aria-pressed="false">Valley</button>
+    <button data-f="southbay" aria-pressed="false">South Bay</button>
+  </div>
+  <div class="centers dark" id="centers" role="group" aria-label="Centre"></div>
+
+  <button class="scope-toggle" id="scopeToggle" aria-expanded="false" aria-label="Choose what to show">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path class="dn" d="M4 9L9 14M12 17L20 9"/>
+      <path class="up" d="M20 15L12 7M4 15L9 10"/>
+    </svg>
+  </button>
+
+  <nav class="scope-menu" id="scopeMenu" aria-label="Scope">
+    <button data-d="act">Needs Action</button>
+    <button data-d="late">Overdue</button>
+    <button data-d="today">Due Today</button>
+    <button data-d="all">Everything</button>
+  </nav>
+</header>
+
+<div class="scroll-container" id="scrollContainer">
+
+  <!-- HERO -->
+  <div class="hero" id="hero">
+    <div class="masthead" id="masthead">
+      <div>
+        <div class="eyebrow">FASTSIGNS · Helm</div>
+        <h1>Open Work Across the <em>Pipeline</em></h1>
+        <div class="sub" id="subText">Ribbon thickness is open dollars held at each stage, read in production-flow
+          order. Valley sits above the centre line, South Bay below, each sized by its share of that stage. Every
+          figure is what is held there now, not a rate of drop-off.</div>
+      </div>
+      <div class="tools" id="tools">
+        <div class="totals">
+          <div class="tot"><div class="v" id="tOpen">—</div><div class="k">Open</div>
+            <div class="n" id="tOpenN">—</div></div>
+          <div class="tot"><div class="v" id="tLate">—</div><div class="k">Overdue</div>
+            <div class="n" id="tLateN">—</div></div>
+          <div class="tot"><div class="v" id="tToday">—</div><div class="k">Due Today</div>
+            <div class="n" id="tTodayN">—</div></div>
+          <div class="tot"><div class="v" id="tOrders">—</div><div class="k">Orders</div>
+            <div class="n" id="tOrdersN">—</div></div>
+          <div class="tot"><div class="v" id="tItems">—</div><div class="k">Line Items</div>
+            <div class="n" id="tItemsN">across the board</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notice" id="notice"></div>
+
+    <!-- RIBBON SECTION: HEADERS (top) → RIBBON (middle) → FOOTERS (bottom) -->
+    <div class="ribbon-section">
+      <div class="stack" id="stack">
+        <div class="heads-wrap">
+          <div class="grid-heads" id="heads"></div>
+        </div>
+        <div class="ribbon-wrap" id="ribbonWrap">
+          <div id="flowWrap"></div>
+        </div>
+        <div class="foots-wrap">
+          <div class="grid-foots" id="foots"></div>
+        </div>
+        <div class="rules" id="rules" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCROLL SPACER -->
+  <div class="scroll-spacer"></div>
+
+  <!-- DETAILS PANEL -->
+  <div class="details-panel" id="detailsPanel">
+    <div class="panel-header">
+      <div class="sec-title">
+        <h2>Stage Analytics</h2>
+      </div>
+    </div>
+    <div class="details-grid" id="detailsGrid"></div>
+
+    <!-- SCHEDULE -->
+    <div class="panel-header sched-title">
+      <div class="sec-title">
+        <div class="eyebrow">FASTSIGNS · Helm</div>
+        <h2>Production Timeline</h2>
+      </div>
+    </div>
+
+    <section class="gantt" id="gantt">
+
+      <!-- three bands, after Rolls-Royce: context above, siblings below -->
+      <div class="g-bar">
+        <div class="g-bar-b">
+          <nav class="g-stages" id="gStages" aria-label="Stages"></nav>
+        </div>
+
+        <div class="g-bar-c">
+          <div class="seg" id="gGroup" role="group" aria-label="Grouping">
+            <button data-g="stage" aria-pressed="true">By Stage</button>
+            <button data-g="center" aria-pressed="false">By Centre</button>
+            <button data-g="none" aria-pressed="false">Ranked</button>
+          </div>
+          <div class="g-bar-c-right">
+            <div class="seg" id="gWin" role="group" aria-label="Window">
+              <button data-w="9" aria-pressed="false">9d</button>
+              <button data-w="15" aria-pressed="false">15d</button>
+              <button data-w="21" aria-pressed="true">21d</button>
+              <button data-w="30" aria-pressed="false">30d</button>
+              <button data-w="60" aria-pressed="false">60d</button>
+              <button data-w="120" aria-pressed="false">120d</button>
+            </div>
+            <div class="seg" id="gNav" role="group" aria-label="Pan the dates">
+              <button data-n="-1" title="Earlier">&#8249;</button>
+              <button data-n="0">Today</button>
+              <button data-n="1" title="Later">&#8250;</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="g-grid g-colhead">
+        <span>Order</span>
+        <span>Centre</span>
+        <span>Rep</span>
+        <span>Progress</span>
+        <span class="r">Value</span>
+        <div class="gantt-axis" id="gAxis"><div class="shift"></div></div>
+        <span class="r">Due</span>
+      </div>
+
+      <div class="gantt-plot">
+        <div class="gantt-lines" id="gLines" aria-hidden="true"><div class="shift"></div></div>
+        <div class="gantt-body" id="gBody"></div>
+      </div>
+      <div class="g-count" id="gCount"></div>
+    </section>
+
+    <div class="legend">
+      <div class="k"><span class="sw" style="background:linear-gradient(90deg,#9E1219,#DA2128)"></span> Valley</div>
+      <div class="k"><span class="sw" style="background:linear-gradient(90deg,#0A2340,#1A4C7E)"></span> South Bay</div>
+      <div class="k"><span class="sw" style="background:linear-gradient(90deg,#33164F,#52247F)"></span> All centres</div>
+      <div class="k">Pale — open dollars · Solid — overdue or due today</div>
+    </div>
+    <div class="legend">
+      <div class="k"><span class="sw" style="background:linear-gradient(90deg,#0A2340,#1A4C7E)"></span> Navy — the time the order had, from taken to due</div>
+      <div class="k"><span class="sw" style="background:linear-gradient(90deg,#9E1219,#DA2128)"></span> Claret — time it has run past due, up to today</div>
+      <div class="k">A squared-off end means the bar continues beyond the window</div>
+      <div class="k">Square in the row — the centre</div>
+    </div>
+    <div class="legend" id="centerLegend"></div>
+
+    <!-- AGING MATRIX -->
+    <section class="board" id="agingSec">
+      <div class="panel-header"><div class="sec-title"><h2>Where Work Is Ageing</h2></div>
+        <span class="board-sub">Read down a column to find where old work sits. Heavy at 30+ in Awaiting Proof Approval means chasing customers; heavy in production means the floor.</span></div>
+      <div class="matrix" id="aging"></div>
+    </section>
+
+    <!-- DUE-DATE LOAD -->
+    <section class="board" id="loadSec">
+      <div class="panel-header"><div class="sec-title"><h2>What Falls Due Next</h2></div>
+        <span class="board-sub">Look for a column taller than its neighbours. Finding a heavy day on Monday means you can still move work; finding it on the day means you cannot.</span></div>
+      <div class="matrix load" id="load"></div>
+    </section>
+
+    <!-- TOP CUSTOMERS -->
+    <section class="board" id="custSec">
+      <div class="panel-header"><div class="sec-title"><h2>The Ten Biggest Open Jobs</h2></div>
+        <span class="board-sub">Your largest exposure right now. Click an order number to open it in CoreBridge, and read the claret feet below to see how much is already late.</span></div>
+      <div class="top-list" id="topList"></div>
+      <div class="chart" id="topBars"></div>
+      <div class="vbars-legend">
+        <span><i style="background:linear-gradient(180deg,#1A4C7E,#0A2340)"></i>Open value</span>
+        <span><i style="background:#DA2128"></i>Overdue portion</span>
+      </div>
+    </section>
+
+    <!-- TOP CLIENTS -->
+    <section class="board" id="clientSec">
+      <div class="panel-header"><div class="sec-title"><h2>Top Ten Clients</h2></div>
+        <span class="board-sub">One client with a single large job is a different problem from one with seventeen small ones. Click any client to see every job behind the number.</span></div>
+      <div class="top-list" id="clientList"></div>
+      <div class="chart" id="clientBars"></div>
+      <div class="vbars-legend">
+        <span><i style="background:linear-gradient(180deg,#1A4C7E,#0A2340)"></i>Open value</span>
+        <span><i style="background:#DA2128"></i>Overdue portion</span>
+      </div>
+    </section>
+
+    <!-- ORDER SIZE -->
+    <section class="board" id="sizeSec">
+      <div class="panel-header"><div class="sec-title"><h2>Order Size Against Late Rate</h2></div>
+        <span class="board-sub">If small jobs run late and large ones do not, lateness is a scheduling choice. If the rate is flat across all four bands, the cause lies elsewhere.</span></div>
+      <div class="matrix" id="sizeMatrix"></div>
+      <div class="chart" id="sizeChart"></div>
+      <div class="vbars-legend">
+        <span><i style="background:linear-gradient(180deg,#1A4C7E,#0A2340)"></i>Open value</span>
+        <span><i style="background:linear-gradient(180deg,#DA2128,#9E1219)"></i>Overdue portion</span>
+      </div>
+    </section>
+
+    <!-- PRODUCT MIX -->
+    <section class="board" id="mixSec">
+      <div class="panel-header"><div class="sec-title"><h2>What Kind Of Work</h2></div>
+        <span class="board-sub">Which kind of work clogs the shop, rather than which stage. Installation late means crews; permits late means the city, and the floor cannot fix it.</span></div>
+      <div class="matrix" id="mixMatrix"></div>
+      <div class="chart" id="mixChart"></div>
+      <div class="vbars-legend">
+        <span><i style="background:linear-gradient(180deg,#1A4C7E,#0A2340)"></i>Open value</span>
+        <span><i style="background:linear-gradient(180deg,#DA2128,#9E1219)"></i>Overdue portion</span>
+      </div>
+    </section>
+
+    <!-- REP × STAGE -->
+    <section class="board" id="repStageSec">
+      <div class="panel-header"><div class="sec-title"><h2>Whose Work Sits Where</h2></div>
+        <span class="board-sub">An even spread is healthy. Everything banked in one stage points at a specific problem, and the stage itself tells you whose problem it is.</span></div>
+      <div class="matrix" id="repStage"></div>
+    </section>
+
+    <!-- TREND -->
+    <section class="board" id="trendSec">
+      <div class="panel-header"><div class="sec-title"><h2>Is It Getting Better</h2></div>
+        <span class="board-sub" id="trendSub">The only view here that is not a snapshot. Two lines over time, so you can tell whether what you changed last week actually worked.</span></div>
+      <div class="trend" id="trend"></div>
+      <div class="vbars-legend">
+        <span><i style="background:#1A4C7E"></i>Open</span>
+        <span><i style="background:#DA2128"></i>Overdue</span>
+      </div>
+    </section>
+
+    <!-- REP SCORECARD -->
+    <section class="board" id="repSec">
+      <div class="panel-header"><div class="sec-title"><h2>By Salesperson</h2></div>
+        <span class="board-sub">Sorted by overdue value, so the heaviest load sits at the top. Average late and oldest separate a busy salesperson from a neglectful one.</span></div>
+      <div class="score" id="repBoard"></div>
+      <div class="chart" id="repChart"></div>
+      <div class="vbars-legend">
+        <span><i style="background:linear-gradient(180deg,#1A4C7E,#0A2340)"></i>Open value</span>
+        <span><i style="background:linear-gradient(180deg,#DA2128,#9E1219)"></i>Overdue portion</span>
+      </div>
+    </section>
+
+    <!-- CENTRE SCORECARD -->
+    <section class="board" id="ctrSec">
+      <div class="panel-header"><div class="sec-title"><h2>By Centre</h2></div>
+        <span class="board-sub">The same measures across all five, so they read against each other. Percent late tells you more here than the dollar figure does.</span></div>
+      <div class="score" id="ctrBoard"></div>
+      <div class="chart" id="ctrChart"></div>
+      <div class="vbars-legend">
+        <span><i style="background:linear-gradient(180deg,#1A4C7E,#0A2340)"></i>Open value</span>
+        <span><i style="background:linear-gradient(180deg,#DA2128,#9E1219)"></i>Overdue portion</span>
+      </div>
+    </section>
+    <div class="unmapped" id="unmapped"></div>
+    <div class="stamp" id="stamp">Loading</div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lenis/1.1.13/lenis.min.js"></script>
+<script>
+"use strict";
+
+/* ============================================================
+   1. TENANTS & CONFIG
+   ============================================================ */
+const TENANTS = {
+  FS2025:{ base:'https://fs2025.v2api.corebridge.net/api/public/',
+           key:'c71e787e-a4c6-4fcd-b7ee-5be97b640154',
+           portal:'https://fs2025.corebridge.net',
+           facility:'southbay', centers:['Long Beach','Torrance','Santa Ana'] },
+  FS2450:{ base:'https://fs2450.v2api.corebridge.net/api/public/',
+           key:'4727c0e7-7c1e-4420-8091-61f2e10e01f6',
+           portal:'https://fs2450.corebridge.net',
+           facility:'valley', centers:['Thousand Oaks','Tarzana'] }
+};
+const CENTERS = [
+  {name:'Tarzana',       facility:'valley',   color:'#00853F'},
+  {name:'Thousand Oaks', facility:'valley',   color:'#DA2128'},
+  {name:'Long Beach',    facility:'southbay', color:'#0066B3'},
+  {name:'Santa Ana',     facility:'southbay', color:'#F47D30'},
+  {name:'Torrance',      facility:'southbay', color:'#52247F'}
+];
+const COLOR_OF = Object.fromEntries(CENTERS.map(c => [c.name, c.color]));
+
+/* Link back to the order in CoreBridge. This is the portal's usual detail
+   path — if your portal opens orders at a different URL, change this one line
+   and every order number on the page follows. */
+const ORDER_URL = o => {
+  const t = TENANTS[o.tenant];
+  return t ? `${t.portal}/SalesModule/Orders/Order.aspx?OrderId=${o.orderId}` : null;
+};
+const FACILITY_OF = Object.fromEntries(CENTERS.map(c => [c.name, c.facility]));
+
+const STAGES = [
+  {name:'Sales Review'},
+  {name:'Order Review'},
+  {name:'In Design'},
+  {name:'In Design Revision'},
+  {name:'Awaiting Proof Approval'},
+  {name:'Proof Approved'},
+  {name:'Vended Product'},
+  {name:'In Production'},
+  {name:'Awaiting Customer Action', hold:true},
+  {name:'Quality Control'}
+];
+
+const OK_STATUS = new Set(['wip','order','approved']);
+const CACHE_TTL = 8*60*1000;
+
+let locCache = {}, DIAG = [], ROWS = [], memCache = null, demoMode = false;
+/* One scope for the page: act (needs action) | late | today | all */
+let state = { lens:'districts', due:'all' };
+let metricsRevealed = false;
+
+/* ============================================================
+   2. API HELPERS
+   ============================================================ */
+function asArr(res){
+  if (Array.isArray(res)) return res;
+  for (const k of ['data','Data','results','Results','items','Items'])
+    if (res && Array.isArray(res[k])) return res[k];
+  return [];
+}
+async function cbGet(tk, path){
+  const t = TENANTS[tk];
+  const r = await fetch(t.base+path, {headers:{'Authorization':'Basic '+t.key}});
+  if (!r.ok) throw new Error(tk+' '+path+' → '+r.status);
+  return r.json();
+}
+async function cbPost(tk, path, body){
+  const t = TENANTS[tk];
+  const r = await fetch(t.base+path, {
+    method:'POST',
+    headers:{'Authorization':'Basic '+t.key,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(tk+' '+path+' → '+r.status);
+  return r.json();
+}
+async function getLocations(tk){
+  if (locCache[tk]) return locCache[tk];
+  const raw = asArr(await cbGet(tk,'ExSalesCenter/GetLocations'));
+  locCache[tk] = raw.map(l => ({
+    id: l.id ?? l.Id ?? l.locationId,
+    name: String(l.name ?? l.Name ?? l.locationName ?? '').replace(/FASTSIGNS of /i,'').trim()
+  })).filter(l => l.id != null && l.name);
+  return locCache[tk];
+}
+const iso = d => new Date(d).toISOString();
+const shift = n => { const d = new Date(); d.setDate(d.getDate()+n); return d; };
+
+async function sweep(tk, locId, filterFor, start, end){
+  const base = {PageSize:100, Sort:'modified', Direction:'desc', OrderLocationId:locId,
+    IncludeProductDetails:true, DateFilterFor:filterFor, StartDate:iso(start), EndDate:iso(end)};
+  const first = await cbPost(tk,'ExOrder/SearchOrders_v2',{...base, Page:1});
+  let rows = asArr(first);
+  const pc = Math.min(first.pageCount || first.PageCount || 1, 10);
+  if (pc > 1){
+    const rest = await Promise.all(Array.from({length:pc-1},(_,i)=>
+      cbPost(tk,'ExOrder/SearchOrders_v2',{...base,Page:i+2}).then(asArr).catch(()=>[])));
+    rest.forEach(r => rows = rows.concat(r));
+  }
+  return rows;
+}
+async function fetchTenant(tk){
+  const t = TENANTS[tk];
+  const all = await getLocations(tk);
+  const hit = l => t.centers.some(c => {
+    const a = l.name.toLowerCase(), b = c.toLowerCase();
+    return a===b || a.includes(b) || b.includes(a);
+  });
+  let locs = all.filter(hit);
+  if (!locs.length){ locs = all; DIAG.push(tk+': no name match, using all '+all.length+' locations'); }
+  DIAG.push(tk+': '+locs.length+' locations — '+locs.map(l=>l.name).join(', '));
+  const chunks = await Promise.all(locs.flatMap(l => [
+    sweep(tk,l.id,'modified',shift(-150),shift(60))
+      .catch(e => { DIAG.push(tk+'/'+l.name+' modified sweep failed: '+e.message); return []; }),
+    sweep(tk,l.id,'due',shift(-365),shift(-1)).catch(()=>[])
+  ]));
+  const flat = chunks.flat();
+  DIAG.push(tk+': '+flat.length+' raw order records');
+  return flat;
+}
+
+/* ============================================================
+   3. NORMALIZE
+   ============================================================ */
+function cbDate(v){
+  if (!v) return null;
+  if (typeof v === 'string'){ const d = new Date(v); return isNaN(d) ? null : d; }
+  if (v.DateText){ const d = new Date(v.DateText); return isNaN(d) ? null : d; }
+  if (v.Year) return new Date(v.Year,(v.Month||1)-1,v.Day||1,v.Hour||0,v.Minute||0);
+  return null;
+}
+function daysFromToday(d){
+  if (!d) return null;
+  const t = new Date(); t.setHours(0,0,0,0);
+  const x = new Date(d); x.setHours(0,0,0,0);
+  return Math.round((t-x)/86400000);
+}
+const cleanCenter = s => String(s||'').replace(/FASTSIGNS of /i,'').trim();
+const cleanQueue  = s => String(s||'').replace(/^WIP\s*:\s*/i,'').trim();
+
+function resolveCenter(raw, tk){
+  const name = cleanCenter(raw);
+  if (FACILITY_OF[name]) return {center:name, facility:FACILITY_OF[name]};
+  const lower = name.toLowerCase();
+  for (const k of Object.keys(FACILITY_OF))
+    if (lower.includes(k.toLowerCase())) return {center:k, facility:FACILITY_OF[k]};
+  return {center:name || TENANTS[tk].centers[0], facility:TENANTS[tk].facility};
+}
+
+/* Which alias actually supplied the salesperson, reported once so the field
+   can be pinned rather than guessed. */
+let REP_FIELD = null;
+
+function pickNamed(obj, keys){
+  for (const k of keys){
+    const v = obj && obj[k];
+    if (v !== undefined && v !== null && String(v).trim() !== '') return [v, k];
+  }
+  return [null, null];
+}
+
+/* Field names vary a little between the two tenants, so read through a list. */
+function pick(obj, keys){
+  for (const k of keys){
+    const v = obj && obj[k];
+    if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+  }
+  return null;
+}
+
+function normalize(orders, tk){
+  const out = [];
+  let sk = 0;
+  for (const o of orders){
+    if (!OK_STATUS.has(String(o.status||'').toLowerCase())){ sk++; continue; }
+    const details = Array.isArray(o.productDetails) ? o.productDetails : [];
+    if (!details.length) continue;
+    /* Built products drop out of the open list below, but they are what the
+       progress figure counts — tally them before they go. */
+    const total = details.length;
+    let done = 0;
+    for (const d of details){
+      const q = cleanQueue(d.ProductStatusCBName || d.ProductStatus);
+      if (q && /^BUILT/i.test(q)) done++;
+    }
+    const start = cbDate(o.dateConverted) || cbDate(o.orderDateCreated) || cbDate(o.estimateDateCreated);
+    for (const p of details){
+      const queue = cleanQueue(p.ProductStatusCBName || p.ProductStatus);
+      if (!queue || /^BUILT/i.test(queue)) continue;
+      const {center, facility} = resolveCenter(p.ProductionLocationName || o.orderSalesLocation, tk);
+      const due = cbDate(p.ProductProductionDue) || cbDate(o.orderDueDate);
+      const dl = daysFromToday(due);
+      out.push({
+        uid:o.orderId+'-'+p.IndexNumber, orderId:o.orderId, queue, center, facility, tenant:tk,
+        line: Number(p.IndexNumber) || null, orderTotal: total, orderDone: done,
+        order: String(pick(o, ['orderNumber','invoiceNumber','orderInvoiceNumber',
+                              'estimateNumber','orderEstimateNumber']) || o.orderId),
+        customer: String(pick(o, ['companyName','customerName','orderCompanyName',
+                                  'customerCompanyName']) || '').trim(),
+        rep: (() => {
+          const [v, k] = pickNamed(o, REP_FIELD ? [REP_FIELD] : [
+            'salesPerson','salesperson','orderSalesPerson','salesRep',
+            'orderSalesRep','salesPersonName','orderSalesPersonName',
+            'accountManager','orderAccountManager','csr']);
+          if (k && !REP_FIELD){
+            REP_FIELD = k;
+            console.info('[FASTSIGNS] salesperson field in use: ' + k +
+              '  — tell Claude this name to pin it');
+          }
+          return String(v || '').trim();
+        })(),
+        desc: String(pick(p, ['ProductDescription','ProductName','Description']) ||
+                     pick(o, ['orderDescription','description']) || '').trim(),
+        value: Number(p.ProductTotal ?? p.ProductSubTotal ?? 0) || 0,
+        category: String(p.ProductCategoryName || '').trim(),
+        daysLate: dl,
+        age: start ? Math.max(0, daysFromToday(start)) : null
+      });
+    }
+  }
+  DIAG.push(tk+': '+out.length+' line items kept ('+sk+' skipped on status)');
+  return out;
+}
+
+/* ============================================================
+   4. DEMO DATA
+   ============================================================ */
+const DEMO_DESC = ['Channel Letters','ADA Room IDs','Vehicle Wrap','Window Graphics',
+  'Monument Face','Banner 4x8','Yard Signs','Wayfinding Set','Acrylic Panel','Post & Panel',
+  'Lobby Logo','Menu Boards','Fleet Decals','Dimensional Letters','Door Vinyl'];
+const DEMO_REP = ['Brittney Herrera','Marcus Ruiz','Dana Whitfield','Sam Okafor',
+  'Priya Raghavan','Tom Beaudry','Elena Castillo','Grant Yoshida'];
+const DEMO_CO = ['Harbor Medical','Kessler & Co','Vista Dental','Pacific Freight',
+  'Lumen Fitness','Ridgeline Homes','Atlas Storage','Bayview Realty','Novato Foods',
+  'Sunset Auto','Trellis Law','Cardinal Bank'];
+
+function demoRows(){
+  const counts = {'Order Review':261,'In Production':228,'Awaiting Proof Approval':63,
+    'In Design':39,'Awaiting Customer Action':14,'Vended Product':13,'Sales Review':8,
+    'Quality Control':6,'In Design Revision':6,'Proof Approved':3};
+  const centers = Object.keys(FACILITY_OF);
+  let s = 7; const rnd = () => (s = (s*48271) % 2147483647) / 2147483647;
+  const rows = []; let n = 0, oid = 104200, left = 0, head = null;
+  for (const [queue,c] of Object.entries(counts))
+    for (let i=0;i<c;i++){
+      /* Line items arrive in runs of one to four sharing an order. */
+      if (left <= 0){
+        left = 1 + Math.floor(rnd()*4);
+        const center = centers[Math.floor(rnd()*centers.length)];
+        const dl = Math.round(-16+rnd()*34);
+        head = {oid: ++oid, center, dl, ag: Math.round(rnd()*rnd()*70),
+                co: DEMO_CO[Math.floor(rnd()*DEMO_CO.length)],
+                rep: DEMO_REP[Math.floor(rnd()*DEMO_REP.length)],
+                done: Math.floor(rnd()*rnd()*4), seq: 0};
+        head.total = left + head.done;
+      }
+      left--;
+      const dl = head.dl + Math.round(rnd()*4);
+      head.seq++;
+      rows.push({uid:'d'+(n++), orderId:head.oid, queue,
+        line: head.done + head.seq, orderTotal: head.total, orderDone: head.done,
+        center:head.center, facility:FACILITY_OF[head.center],
+        tenant: FACILITY_OF[head.center] === 'valley' ? 'FS2450' : 'FS2025',
+        order: String(head.oid), customer: head.co, rep: head.rep,
+        desc: DEMO_DESC[Math.floor(rnd()*DEMO_DESC.length)],
+        value: Math.round(rnd()>0.93 ? 4000+rnd()*22000 : 180+rnd()*3200), category:'',
+        daysLate: dl, age: Math.max(head.ag, dl > 0 ? dl : 0)});
+    }
+  return rows;
+}
+
+/* ============================================================
+   5. FORMAT & HELPERS
+   ============================================================ */
+const money = v => {
+  if (v === 0 || v === null || v === undefined) return '$0';
+  if (v >= 1e6) return '$'+(v/1e6).toFixed(v>=1e7?1:2)+'M';
+  if (v >= 1e3) return '$'+Math.round(v/1e3)+'K';
+  return '$'+Math.round(v);
+};
+const esc = s => String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function visible(){
+  const L = state.lens;
+  if (L === 'districts' || L === 'centers') return ROWS;
+  if (L === 'valley' || L === 'southbay') return ROWS.filter(r => r.facility === L);
+  return ROWS.filter(r => r.center === L);
+}
+
+/* ============================================================
+   6. AGGREGATE
+   ============================================================ */
+function build(rows){
+  const grand = rows.reduce((a,r)=>a+r.value,0);
+  const fmtPct = v => v>=10 ? Math.round(v)+'%' : v>=1 ? v.toFixed(1)+'%' : v.toFixed(2)+'%';
+  return STAGES.map((st,i) => {
+    const rs = rows.filter(r => r.queue === st.name);
+    const sum = a => a.reduce((s,r)=>s+r.value,0);
+    const late = rs.filter(r => r.daysLate !== null && r.daysLate > 0);
+    const today = rs.filter(r => r.daysLate === 0);
+    const ahead = rs.filter(r => r.daysLate !== null && r.daysLate < 0);
+    const ages = rs.map(r=>r.age).filter(a=>a!==null);
+    const val = sum(rs);
+    return {
+      ...st, idx:i+1, count:rs.length, value:val,
+      valley: sum(rs.filter(r=>r.facility==='valley')),
+      southbay: sum(rs.filter(r=>r.facility==='southbay')),
+      lateValley: sum(late.filter(r=>r.facility==='valley')),
+      lateSouthbay: sum(late.filter(r=>r.facility==='southbay')),
+      /* due now = already overdue, or falling due today */
+      dueNow:         sum(late) + sum(today),
+      dueNowValley:   sum(late.filter(r=>r.facility==='valley')) +
+                      sum(today.filter(r=>r.facility==='valley')),
+      dueNowSouthbay: sum(late.filter(r=>r.facility==='southbay')) +
+                      sum(today.filter(r=>r.facility==='southbay')),
+      byCenter: Object.fromEntries(CENTERS.map(c =>
+        [c.name, sum(rs.filter(r=>r.center===c.name))])),
+      lateValue:sum(late), lateCount:late.length,
+      todayValue:sum(today), todayCount:today.length,
+      aheadValue:sum(ahead), aheadCount:ahead.length,
+      avgAge: ages.length ? Math.round(ages.reduce((a,b)=>a+b,0)/ages.length) : null,
+      oldest: ages.length ? Math.max(...ages) : null,
+      avgTicket: rs.length ? val/rs.length : 0,
+      share: grand > 0 ? fmtPct((val/grand)*100) : '0%'
+    };
+  });
+}
+
+/* ============================================================
+   7. RENDER
+   ============================================================ */
+function renderHeads(S){
+  const el = document.getElementById('heads');
+  el.style.gridTemplateColumns = `repeat(${S.length},minmax(0,1fr))`;
+  el.innerHTML = S.map(s => `
+    <div class="stage-head${s.hold?' hold':''}">
+      <div class="stage-idx">${String(s.idx).padStart(2,'0')}</div>
+      <div class="stage-name">${esc(s.name)}</div>
+    </div>`).join('');
+}
+
+const RIBBON = {
+  valley:   {from:'#9E1219', to:'#DA2128'},
+  southbay: {from:'#0A2340', to:'#1A4C7E'},
+  centers:  {from:'#33164F', to:'#52247F'}
+};
+
+const darken = (hex, k) => '#' + [1,3,5]
+  .map(i => Math.round(parseInt(hex.slice(i,i+2),16) * (1-k)).toString(16).padStart(2,'0'))
+  .join('');
+
+function lensColors(){
+  const L = state.lens;
+  if (L === 'districts') return {up:RIBBON.valley,   dn:RIBBON.southbay};
+  if (L === 'valley')    return {up:RIBBON.valley,   dn:RIBBON.valley};
+  if (L === 'southbay')  return {up:RIBBON.southbay, dn:RIBBON.southbay};
+  if (L === 'centers')   return {up:RIBBON.centers,  dn:RIBBON.centers};
+  const c = COLOR_OF[L] || RIBBON.centers.to;
+  const g = {from:darken(c,0.46), to:c};
+  return {up:g, dn:g};
+}
+
+const hex2rgb = h => [1,3,5].map(i => parseInt(h.slice(i,i+2),16));
+const rgbCss  = a => `rgb(${a.map(v=>Math.round(v)).join(',')})`;
+const lerp    = (a,b,t) => a.map((v,i) => v + (b[i]-v)*t);
+const easeOut = t => 1 - Math.pow(1-t, 4);
+
+/* Ribbon geometry is measured from the live container, so the SVG spans the
+   full width of the stage grid and the full height of the band between the
+   headers and the footers. One SVG unit = one CSS pixel, so hairlines stay
+   hairlines at any window size.
+   FILL — share of each half-band the thickest side may use (glow included). */
+const FLOW = {FILL:0.88, GLOW:1.28, PAD:6, MIN_PX:1.4};
+
+function flowBox(){
+  const el = document.getElementById('flowWrap');
+  const r  = el ? el.getBoundingClientRect() : null;
+  const W  = Math.max(320, Math.round(r && r.width  ? r.width  : 1680));
+  const H  = Math.max(120, Math.round(r && r.height ? r.height : 280));
+  return {W, H, cy:H/2, half: Math.max(20, (H/2 - FLOW.PAD) * FLOW.FILL)};
+}
+
+let animId = null, shown = null;
+
+function flowTarget(S){
+  const peak = Math.max(...S.map(s=>s.value), 1);
+  const solo = state.lens !== 'districts';
+
+  /* Heights are held as fractions (0–1), converted to pixels at draw time —
+     that way a resize rescales the ribbon without re-running the animation. */
+  const up = [], dn = [], lateUp = [], lateDn = [];
+  S.forEach(s => {
+    const h = s.value > 0 ? s.value/peak : 0;
+    const lateAll = (s.dueNow || 0) / (s.value || 1);
+    if (solo){
+      up.push(h/2); dn.push(h/2);
+      lateUp.push(h/2 * lateAll); lateDn.push(h/2 * lateAll);
+      return;
+    }
+    const tot = s.valley + s.southbay;
+    if (tot <= 0){ up.push(0); dn.push(0); lateUp.push(0); lateDn.push(0); return; }
+    const u = h*(s.valley/tot), d = h*(s.southbay/tot);
+    up.push(u); dn.push(d);
+    /* the share of each district's own money in that stage that is overdue */
+    lateUp.push(s.valley   > 0 ? u * ((s.dueNowValley   || 0)/s.valley)   : 0);
+    lateDn.push(s.southbay > 0 ? d * ((s.dueNowSouthbay || 0)/s.southbay) : 0);
+  });
+
+  /* Scale so the single thickest side just reaches the edge of its half of
+     the band. Uniform, so every proportion holds. */
+  const widest = Math.max(0, ...up, ...dn);
+  const k = widest > 0 ? 1/widest : 0;
+  for (let i=0; i<up.length; i++){
+    up[i] *= k; dn[i] *= k; lateUp[i] *= k; lateDn[i] *= k;
+  }
+
+  const c = lensColors();
+  return {
+    up, dn, lateUp, lateDn,
+    upFrom: hex2rgb(c.up.from), upTo: hex2rgb(c.up.to),
+    dnFrom: hex2rgb(c.dn.from), dnTo: hex2rgb(c.dn.to)
+  };
+}
+
+function drawFlow(g){
+  const {W,H,cy,half} = flowBox();
+  const n = g.up.length, colW = W/n, cx = i => colW*i + colW/2;
+  const toPx = v => v > 0 ? Math.max(FLOW.MIN_PX, v*half) : 0;
+  const U = g.up.map(toPx), D = g.dn.map(toPx);
+  const LU = (g.lateUp || []).map(v => v > 0 ? v*half : 0);
+  const LD = (g.lateDn || []).map(v => v > 0 ? v*half : 0);
+
+  function areaPath(topAt, botAt){
+    let d = `M 0 ${topAt(0)} L ${cx(0)} ${topAt(0)}`;
+    for (let i=0;i<n-1;i++){
+      const mid = (cx(i)+cx(i+1))/2;
+      d += ` C ${mid} ${topAt(i)} ${mid} ${topAt(i+1)} ${cx(i+1)} ${topAt(i+1)}`;
+    }
+    d += ` L ${W} ${topAt(n-1)} L ${W} ${botAt(n-1)}`;
+    for (let i=n-1;i>0;i--){
+      const mid = (cx(i)+cx(i-1))/2;
+      d += ` C ${mid} ${botAt(i)} ${mid} ${botAt(i-1)} ${cx(i-1)} ${botAt(i-1)}`;
+    }
+    return d + ` L 0 ${botAt(0)} Z`;
+  }
+
+  const svg = `<svg id="flow" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
+    xmlns="http://www.w3.org/2000/svg"
+    role="img" aria-label="Open dollars held at each production stage">
+    <defs>
+      <linearGradient id="gUp" x1="0" x2="1">
+        <stop offset="0" stop-color="${rgbCss(g.upFrom)}"/><stop offset="1" stop-color="${rgbCss(g.upTo)}"/></linearGradient>
+      <linearGradient id="gDn" x1="0" x2="1">
+        <stop offset="0" stop-color="${rgbCss(g.dnFrom)}"/><stop offset="1" stop-color="${rgbCss(g.dnTo)}"/></linearGradient>
+    </defs>
+    <path d="${areaPath(i => cy - U[i], i => cy)}" fill="url(#gUp)" opacity="0.28"/>
+    <path d="${areaPath(i => cy, i => cy + D[i])}" fill="url(#gDn)" opacity="0.28"/>
+    <path d="${areaPath(i => cy - LU[i], i => cy)}" fill="url(#gUp)"/>
+    <path d="${areaPath(i => cy, i => cy + LD[i])}" fill="url(#gDn)"/>
+    <line x1="0" y1="${cy}" x2="${W}" y2="${cy}" stroke="#FDFCFA" stroke-width="0.5" opacity="0.85"/>
+  </svg>`;
+  document.getElementById('flowWrap').innerHTML = svg;
+}
+
+function renderFlow(S){
+  const target = flowTarget(S);
+  const reduced = typeof matchMedia === 'function' &&
+    matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+
+  if (!shown || shown.up.length !== target.up.length || reduced){
+    shown = target; drawFlow(shown); return;
+  }
+
+  const start = shown, t0 = performance.now(), DUR = 560;
+  const step = now => {
+    const t = easeOut(Math.min(1, (now - t0) / DUR));
+    const frame = {
+      up: start.up.map((v,i) => v + (target.up[i]-v)*t),
+      dn: start.dn.map((v,i) => v + (target.dn[i]-v)*t),
+      /* the overdue layer has to travel with the shape it sits inside */
+      lateUp: (start.lateUp || start.up).map((v,i) => v + ((target.lateUp[i]||0)-v)*t),
+      lateDn: (start.lateDn || start.dn).map((v,i) => v + ((target.lateDn[i]||0)-v)*t),
+      upFrom: lerp(start.upFrom, target.upFrom, t),
+      upTo:   lerp(start.upTo,   target.upTo,   t),
+      dnFrom: lerp(start.dnFrom, target.dnFrom, t),
+      dnTo:   lerp(start.dnTo,   target.dnTo,   t)
+    };
+    drawFlow(frame);
+    if (t < 1) animId = requestAnimationFrame(step);
+    else { shown = target; animId = null; }
+  };
+  animId = requestAnimationFrame(step);
+}
+
+function metricHTML(k, v, n, cls){
+  return `<div class="metric${cls?' '+cls:''}">
+    <span class="k">${k}</span>
+    <span class="v">${v}${n!==undefined&&n!==null?`<span class="n">· ${n}</span>`:''}</span>
+  </div>`;
+}
+
+function renderFoots(S, revealMetrics){
+  const el = document.getElementById('foots');
+  el.style.gridTemplateColumns = `repeat(${S.length},minmax(0,1fr))`;
+
+  el.innerHTML = S.map(s => `
+    <div class="stage-foot">
+      <div class="value-group${revealMetrics ? ' rise' : ''}">
+        <div class="foot-value">${esc(money(s.value))}</div>
+        <div class="foot-items">${s.count} ${s.count===1?'item':'items'}</div>
+      </div>
+      <div class="metrics-wrapper${revealMetrics ? ' revealed' : ''}">
+        ${metricHTML('Share', s.share, null, 'share')}
+        ${metricHTML('Overdue', money(s.lateValue), s.lateCount, s.lateValue ? 'late' : '')}
+        ${metricHTML('Due today', money(s.todayValue), s.todayCount)}
+        ${metricHTML('Upcoming', money(s.aheadValue), s.aheadCount)}
+        ${metricHTML('Avg ticket', money(s.avgTicket))}
+        ${metricHTML('Avg age', s.avgAge===null?'—':s.avgAge+'d')}
+        ${metricHTML('Oldest', s.oldest===null?'—':s.oldest+'d')}
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   7b. SCHEDULE — one order per row, worst first
+   ============================================================ */
+const GANTT = { group:'stage', win:21, offset:0, open:0 };
+/* Rows the reader has opened. Held by order id so a re-render — panning the
+   dates, changing a filter — puts them back rather than folding them shut. */
+const EXPANDED = new Set();
+/* offset — days the window is panned from today.  open — index of the section
+   currently expanded; the rest stay collapsed to their titles. */
+
+/* daysLate is measured from today: positive is overdue, negative is days still
+   to run. Offsets below are days from today, so the future is positive. */
+const dueOffset   = r => r.daysLate === null ? null : -r.daysLate;
+const startOffset = r => r.age !== null ? -r.age : null;
+
+function urgencyOf(r){
+  if (r.daysLate === null) return 'none';
+  if (r.daysLate > 0)   return 'late';
+  if (r.daysLate === 0) return 'today';
+  return r.daysLate >= -7 ? 'week' : 'later';
+}
+const STAGE_RANK = Object.fromEntries(STAGES.map((s,i) => [s.name, i]));
+
+function dueLabel(r){
+  if (r.daysLate === null) return 'no date';
+  if (r.daysLate > 0)   return r.daysLate + 'd late';
+  if (r.daysLate === 0) return 'today';
+  return 'in ' + (-r.daysLate) + 'd';
+}
+
+/* ---- one row per order -------------------------------------------------
+   Line items sharing an order number collapse into one. The order sits in the
+   least advanced stage any of its items are in — that is what is holding it
+   up — and takes the earliest outstanding due date, since that is the
+   deadline you act on. */
+function toOrders(rows){
+  const byOrder = new Map();
+  for (const r of rows){
+    let o = byOrder.get(r.orderId);
+    if (!o){
+      o = {orderId:r.orderId, order:r.order, customer:r.customer, desc:r.desc, rep:r.rep,
+           center:r.center, facility:r.facility, queue:r.queue, tenant:r.tenant,
+           value:0, count:0, daysLate:r.daysLate, age:r.age,
+           total:r.orderTotal || 0, done:r.orderDone || 0, items:[]};
+      byOrder.set(r.orderId, o);
+    }
+    o.value += r.value;
+    o.count += 1;
+    o.items.push({line:r.line, desc:r.desc, queue:r.queue,
+                  daysLate:r.daysLate, age:r.age, value:r.value});
+    if (r.orderTotal) o.total = r.orderTotal;
+    if (r.orderDone !== undefined) o.done = r.orderDone;
+    if (!o.customer && r.customer) o.customer = r.customer;
+    if (!o.rep && r.rep) o.rep = r.rep;
+    if (!o.desc && r.desc) o.desc = r.desc;
+    if (r.daysLate !== null && (o.daysLate === null || r.daysLate > o.daysLate)) o.daysLate = r.daysLate;
+    if (r.age !== null && (o.age === null || r.age > o.age)) o.age = r.age;
+    if ((STAGE_RANK[r.queue] ?? 99) < (STAGE_RANK[o.queue] ?? 99)){ o.queue = r.queue; o.center = r.center; }
+  }
+  /* Line items read in their own order — P1, P2, P3. */
+  const list = [...byOrder.values()];
+  for (const o of list){
+    o.total = Math.max(o.total || 0, o.count + (o.done || 0));
+    o.items.sort((a,b) => (a.line || 99) - (b.line || 99));
+  }
+  return list;
+}
+
+function ganttSet(rows){
+  /* the page's one scope, applied at order level */
+  let r = toOrders(rows).filter(inScope);
+  /* Strict ranking — lateness first, then money at stake. Rows are never
+     rearranged after this, so the top of the list is the top of the list. */
+  return r.sort((a,b) =>
+    (b.daysLate === null ? -1e6 : b.daysLate) - (a.daysLate === null ? -1e6 : a.daysLate) ||
+    b.value - a.value);
+}
+
+/* A ring filled to the share of line items already built, with the figure
+   beside it. Reads the same whether an order has two products or twenty. */
+const RING_C = 2 * Math.PI * 6.5;      /* r=6.5 in a 20-unit box */
+function progressHTML(r){
+  const total = Math.max(r.total || 0, r.count);
+  const done  = Math.max(0, Math.min(r.done || 0, total));
+  const arc   = total ? (done/total) * RING_C : 0;
+  return `<div class="g-prog">
+    <svg class="ring${done && done === total ? ' done' : ''}" viewBox="0 0 20 20" aria-hidden="true">
+      <circle class="t" cx="10" cy="10" r="6.5"/>
+      <circle class="f" cx="10" cy="10" r="6.5"
+              stroke-dasharray="${arc.toFixed(2)} ${RING_C.toFixed(2)}"/>
+    </svg><span>${done}/${total}</span></div>`;
+}
+
+/* The open line items of an order — P1, P2, P3 with their own stage and due
+   date. Built products are counted in the progress dots, not listed here. */
+function subHTML(r, half, win){
+  return `<div class="g-sub"><div class="g-subin">` + r.items.map((it, k) => {
+    const late = it.daysLate !== null && it.daysLate > 0;
+    /* Product sits under the order, stage under the centre, and the value and
+       due date land in the same columns as the order's own. */
+    return `<div class="g-line">
+      <span class="pd"><span class="p">P${it.line || (k+1)}</span>
+        <span class="d">${esc(it.desc || '—')}</span></span>
+      <span class="v">${esc(money(it.value))}</span>
+      <div class="g-track sub" data-dl="${it.daysLate === null ? '' : it.daysLate}"
+           data-age="${it.age === null || it.age === undefined ? '' : it.age}"
+           data-stage="${esc(it.queue)}"><div class="g-shift">${trackHTML(it, half, win, it.queue)}</div></div>
+      <span class="u${late ? ' late' : ''}">${esc(dueLabel(it))}</span>
+    </div>`;
+  }).join('') + `</div></div>`;
+}
+
+/* First word on top, whatever follows beneath — two short lines instead of
+   one long one, so the column stays narrow. */
+function repHTML(rep){
+  const name = (rep || '').trim();
+  if (!name) return '<div class="g-rep"><b>—</b></div>';
+  const i = name.indexOf(' ');
+  if (i < 0) return `<div class="g-rep"><b>${esc(name)}</b></div>`;
+  return `<div class="g-rep"><b>${esc(name.slice(0, i))}</b>` +
+         `<span>${esc(name.slice(i + 1))}</span></div>`;
+}
+
+/* Just the bars for one order, at the current window and pan. Kept apart from
+   the row so the dates can be redrawn without rebuilding a single row — which
+   is what used to throw the reader back to the first stage. */
+function trackHTML(r, half, win, endLabel){
+  const O = GANTT.offset;
+  const pct   = off => ((off - O + half) / win) * 100;
+  const clamp = v => Math.max(0, Math.min(100, v));
+  const u = urgencyOf(r);
+
+  const lo = O - half, hi = O + half;
+  const due = dueOffset(r);
+  const end = due !== null ? due : 0;
+  const beg = startOffset(r) !== null ? Math.min(startOffset(r), end) : end - 1;
+
+  /* A bar is two pieces that meet at the due date. Only its outer ends are
+     rounded — the join between them is flat, so a seam can never be mistaken
+     for an edge cut off by the window. */
+  const cap = (l, rr) =>
+    `border-radius:${l?'4.5px':'0'} ${rr?'4.5px':'0'} ${rr?'4.5px':'0'} ${l?'4.5px':'0'}`;
+
+  const late = u === 'late' && due !== null;
+
+  /* the overrun: due date to today */
+  let over = '', overDrawn = false, overClipL = false;
+  if (late){
+    const a = clamp(pct(Math.max(due, lo)));
+    const b = clamp(pct(Math.min(0, hi)));
+    if (b - a > 0.05){
+      overDrawn = true;
+      overClipL = due < lo;                       /* the due date is off screen */
+      const clipR = 0 > hi;                       /* today is off screen */
+      over = `<div class="g-over" style="left:${a.toFixed(2)}%;width:${(b-a).toFixed(2)}%;` +
+             `${cap(false, !clipR)}"></div>`;
+    }
+  }
+
+  /* the planned run: order taken to due date */
+  let span = '';
+  if (beg <= hi && end >= lo){
+    const a = clamp(pct(Math.max(beg, lo)));
+    const b = clamp(pct(Math.min(end, hi)));
+    const w = b - a;
+    /* a stub narrower than a cap is noise — let the overrun stand alone */
+    if (w > 0.35 || !overDrawn){
+      const clipL = beg < lo;
+      span = `<div class="g-span${clipL ? ' clip-l' : ''}" ` +
+             `style="left:${a.toFixed(2)}%;width:${Math.max(0.4, w).toFixed(2)}%;` +
+             `${cap(!clipL, !overDrawn)}"></div>`;
+    } else if (overDrawn && !overClipL){
+      /* nothing navy worth drawing, so the overrun keeps its own left cap */
+      over = over.replace(cap(false, true), cap(true, true));
+    }
+  }
+  /* the line-item variant stands a tick on the due date */
+  const tick = (due !== null && due >= lo && due <= hi)
+    ? `<div class="g-tick${u === 'late' ? ' late' : ''}" ` +
+      `style="left:${clamp(pct(due)).toFixed(2)}%"></div>`
+    : '';
+
+  /* a line item names its stage at the end of its own rule, which frees the
+     whole left column for the product name */
+  let stageCap = '';
+  if (endLabel){
+    /* the right edge actually drawn: today for an overdue line, its due date
+       otherwise — not the due date it passed weeks ago and off screen */
+    const rightAt = u === 'late' ? Math.min(0, hi) : Math.min(end, hi);
+    const at = clamp(pct(rightAt));
+    stageCap = `<span class="g-endlabel" style="left:${at.toFixed(2)}%">` +
+               `${esc(endLabel)}</span>`;
+  }
+
+  return span + over + tick + stageCap;
+}
+
+/* Redraw the dates and every bar in place. No DOM is rebuilt, the pin is not
+   touched, and the reader stays exactly where they were. */
+function repaintTracks(){
+  const win = GANTT.win, half = win/2;
+  renderGanttAxis(win, half);
+  document.querySelectorAll('#gBody .g-track').forEach(tr => {
+    const d = tr.dataset;
+    const r = {
+      daysLate: d.dl === '' ? null : Number(d.dl),
+      age:      d.age === '' ? null : Number(d.age)
+    };
+    const shift = tr.querySelector('.g-shift');
+    if (shift) shift.innerHTML = trackHTML(r, half, win, d.stage || '');
+  });
+}
+
+function rowHTML(r, half, win){
+  const u = urgencyOf(r);
+  const color = COLOR_OF[r.center] || '#9A9BA3';
+  const dueCls = u === 'late' ? ' late' : u === 'today' ? ' today' : '';
+  const cust = (r.customer || r.desc || '').trim();
+  const lateItems = (r.items || []).filter(it => it.daysLate !== null && it.daysLate > 0).length;
+  const total = Math.max(r.total || 0, r.count);
+  const built = Math.max(0, Math.min(r.done || 0, total));
+
+  const tip = [r.order || r.orderId, cust, r.center || '—', r.queue,
+               r.count + ' open' + (lateItems ? ' · ' + lateItems + ' late' : ''),
+               money(r.value), dueLabel(r), u, r.rep || '—',
+               built + ' of ' + total + ' built'].join('\u0001');
+
+  const isOpen = EXPANDED.has(r.orderId);
+  return `<div class="g-item${isOpen ? ' open' : ''}" data-oid="${esc(r.orderId)}">` +
+    `<div class="g-grid g-row" data-tip="${esc(tip)}">
+    <div class="g-ord">
+      ${(() => { const u = ORDER_URL(r); const n = esc(r.order || r.orderId);
+        return u ? `<a class="num" href="${u}" target="_blank" rel="noopener">${n}</a>`
+                 : `<span class="num">${n}</span>`; })()}
+      <span class="cust">${esc(cust)}</span>
+      ${r.count > 1 ? `<span class="ct">${r.count}&#215;</span>` : ''}
+      ${GANTT.group === 'stage' ? '' : `<span class="g-tag">${esc(r.queue)}</span>`}
+    </div>
+    <div class="g-ctr"><i style="background:${color}"></i>${esc(r.center || '—')}</div>
+    ${repHTML(r.rep)}
+    ${progressHTML(r)}
+    <div class="g-val">${esc(money(r.value))}</div>
+    <div class="g-track" data-dl="${r.daysLate === null ? '' : r.daysLate}"
+         data-age="${r.age === null ? '' : r.age}"><div class="g-shift">${trackHTML(r, half, win)}</div></div>
+    <div class="g-due${dueCls}">${esc(dueLabel(r))}</div>
+  </div>${subHTML(r, half, win)}</div>`;
+}
+
+function bandSummary(list){
+  const v = list.reduce((a,r) => a+r.value, 0);
+  const late = list.filter(r => r.daysLate !== null && r.daysLate > 0).length;
+  return `${list.length} ${list.length===1?'order':'orders'} · ${money(v)}` +
+         (late ? ` · <b>${late} overdue</b>` : '');
+}
+
+function sectionsOf(set){
+  if (GANTT.group === 'center'){
+    const out = CENTERS.map(c => ({name:c.name, color:c.color,
+                                   list:set.filter(r => r.center === c.name)}));
+    const rest = set.filter(r => !COLOR_OF[r.center]);
+    if (rest.length) out.push({name:'Unassigned', color:'#9A9BA3', list:rest});
+    return out.filter(x => x.list.length);
+  }
+  if (GANTT.group === 'stage'){
+    return STAGES.map(st => ({name:st.name, color:null,
+                              list:set.filter(r => r.queue === st.name)}))
+                 .filter(x => x.list.length);
+  }
+  return [{name:'All Orders, Worst First', color:null, list:set}];
+}
+
+function renderGantt(rows){
+  const body = document.getElementById('gBody');
+  if (!body) return;
+  const count = document.getElementById('gCount');
+
+  const win = GANTT.win, half = win/2;
+  renderGanttAxis(win, half);
+
+  const set = ganttSet(rows);
+  if (!set.length){
+    body.innerHTML = '<div class="g-empty">Nothing needs action in this view</div>';
+    if (count) count.textContent = '';
+    return;
+  }
+
+  const secs = sectionsOf(set);
+  /* keep the reader's place across a rebuild — only clamp if the stage list
+     itself got shorter */
+  GANTT.open = Math.max(0, Math.min(GANTT.open, secs.length - 1));
+  stageSecs = secs.map(x => ({name:x.name, meta:bandSummary(x.list)}));
+
+  const menu = document.getElementById('gStages');
+  if (menu) menu.innerHTML = secs.map((x,i) =>
+    `<button data-i="${i}" aria-current="${i===GANTT.open}">${esc(x.name)}` +
+    `<b>${x.list.length}</b><i></i></button>`).join('');
+
+  body.innerHTML = secs.map((sec, i) => `
+    <section class="g-sec${i === GANTT.open ? ' open' : ''}" data-i="${i}">
+      <header class="g-sechead">
+        ${sec.color ? `<i style="background:${sec.color}"></i>` : ''}
+        <span class="t">${esc(sec.name)}</span>
+        <span class="m">${bandSummary(sec.list)}</span>
+        <span class="x">${i === GANTT.open ? 'Open' : 'Show'}</span>
+      </header>
+      <div class="g-secbody">
+        <div class="g-secinner" data-lenis-prevent>
+          ${sec.list.map(r => rowHTML(r, half, win)).join('')}
+        </div>
+      </div>
+    </section>`).join('');
+
+  restoreExpanded();
+  buildStageScroll();
+
+  const late = set.filter(r => r.daysLate !== null && r.daysLate > 0).length;
+  const items = set.reduce((a,r) => a+r.count, 0);
+  const v = set.reduce((a,r) => a+r.value, 0);
+  if (count) count.innerHTML =
+    `${set.length} orders · ${items} line items · ${money(v)}` +
+    (late ? ` · ${late} overdue` : '');
+}
+
+/* ---- the accordion, driven by a scrubbed ScrollTrigger timeline ---------
+   The schedule pins as one screen. Scroll scrubs a timeline that collapses the
+   open stage while expanding the next in parallel, so the two moves are one
+   gesture. The open stage is given every pixel the frame isn't using, which is
+   why it fills the screen rather than opening a crack. */
+
+const HAS_GSAP = typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined';
+let stageTL = null, stageSecs = [], stageH = 0;
+
+/* Everything on the pinned screen that isn't the open stage. */
+function topbarPx(){
+  const el = document.getElementById('topbar');
+  return el ? Math.round(el.getBoundingClientRect().height) : 48;
+}
+
+/* Two budgets: what a stage gets with the whole ladder on screen, and what it
+   gets when the ladder stands down to the next stage alone. A stage only takes
+   the second when its rows will not fit in the first. */
+function heightBudget(nSections){
+  const g = document.getElementById('gantt');
+  const base = ['.g-bar', '.g-colhead']
+    .map(sel => g.querySelector(sel))
+    .filter(Boolean)
+    .reduce((a, el) => a + el.getBoundingClientRect().height, 0);
+
+  const head = g.querySelector('.g-sechead');
+  const headH = head ? head.getBoundingClientRect().height : 30;
+  /* only the frame's own bottom padding is held back */
+  const room = innerHeight - topbarPx() - base - 20;
+
+  return {
+    full: Math.max(120, Math.round(room - nSections * headH)),
+    solo: Math.max(170, Math.round(room - headH))
+  };
+}
+
+/* Title, summary and chip state for whichever stage is open. */
+function setActiveStage(i){
+  GANTT.open = i;
+  const sec = stageSecs[i];
+  if (!sec) return;
+  const t = document.getElementById('gActive');
+  const m = document.getElementById('gActiveMeta');
+  if (t) t.textContent = sec.name;
+  if (m) m.innerHTML = sec.meta;
+  document.querySelectorAll('#gStages button').forEach((b, k) => {
+    b.setAttribute('aria-current', String(k === i));
+    if (k === i) b.scrollIntoView({block:'nearest', inline:'nearest'});
+  });
+  /* keep the open title in view within the pinned ladder */
+  /* only a stage that needs the height folds the ladder away */
+  const g = document.getElementById('gantt');
+  if (g) g.classList.toggle('tight', !!stageTight[i]);
+
+  document.querySelectorAll('#gBody .g-sec').forEach((el, k) => {
+    el.classList.toggle('open', k === i);
+    el.classList.toggle('next', k === i + 1);   /* kept when the ladder folds */
+    const x = el.querySelector('.x');
+    if (x) x.textContent = k === i ? 'Open' : 'Show';
+  });
+  drawStageIn(i);
+
+}
+
+/* The grid draws itself down the screen and the bars run out from the left as
+   a stage takes over — the chart arrives rather than simply being there. */
+function drawStageIn(i){
+  if (!HAS_GSAP) return;
+  const sec = document.querySelectorAll('#gBody .g-sec')[i];
+
+  const rules = document.querySelectorAll('#gLines .shift i');
+  if (rules.length){
+    /* scaleY only — the opacity of each rule encodes its distance from
+       today and must survive the animation */
+    gsap.fromTo(rules, {scaleY:0}, {
+      scaleY:1, duration:0.7, ease:'power3.out',
+      stagger:{each:0.035, from:'center'}
+    });
+  }
+  const bands = document.querySelectorAll('#gLines .shift u');
+  if (bands.length) gsap.fromTo(bands, {opacity:0}, {opacity:1, duration:0.9, ease:'power2.out'});
+
+  if (!sec) return;
+  const bars = sec.querySelectorAll('.g-span, .g-over');
+  if (bars.length){
+    gsap.fromTo(bars,
+      {scaleX:0, transformOrigin:'left center'},
+      {scaleX:1, duration:0.62, ease:'power2.out', stagger:{each:0.012, from:'start'}, overwrite:true});
+  }
+}
+
+/* A stage takes the screen if it needs it and only its own height if it does
+   not — three orders should not leave two thirds of the frame empty. */
+function sectionTarget(sec){
+  const inner = sec.querySelector('.g-secinner');
+  const want  = inner ? inner.scrollHeight : stageH;
+  return Math.max(40, Math.min(stageH, want));
+}
+
+let stageTight = [];
+
+function buildStageScroll(){
+  const gantt = document.getElementById('gantt');
+  const secs  = [...document.querySelectorAll('#gBody .g-sec')];
+  const bodies = secs.map(el => el.querySelector('.g-secbody'));
+
+  if (stageTL){ stageTL.scrollTrigger && stageTL.scrollTrigger.kill(true); stageTL.kill(); stageTL = null; }
+  gantt.classList.remove('pinned');
+
+  const n = secs.length;
+  if (!n) return;
+
+  /* Panning the dates, changing a filter or resizing all rebuild the rows,
+     which means rebuilding this timeline. Remember where the reader was so
+     they are not thrown back to the first stage every time. */
+  const was = Math.max(0, Math.min(GANTT.open, n - 1));
+
+  /* No GSAP, or a single stage: plain open, click to switch. */
+  if (!HAS_GSAP || n < 2){
+    bodies.forEach((b, k) => {
+      b.style.height  = k === was ? 'auto' : '0px';
+      b.style.opacity = k === was ? 1 : 0;
+    });
+    setActiveStage(was);
+    return;
+  }
+
+  /* Measure the natural height of every stage BEFORE pinning — once pinned,
+     stages that are neither open nor next are hidden, and a hidden element
+     measures zero. That is what made every stage open to a single row. */
+  const natural = secs.map(sec => {
+    const inner = sec.querySelector('.g-secinner');
+    return inner ? inner.scrollHeight : 0;
+  });
+
+  gantt.classList.add('pinned');
+  const budget = heightBudget(n);
+  stageH = budget.solo;
+
+  /* A stage that fits alongside the whole ladder keeps the ladder. One that
+     does not takes the room instead, and the ladder stands down to the next
+     stage alone. */
+  /* A stage that fits beside the whole ladder takes only what it needs, and
+     the ladder shares out the rest. One that does not fit takes the entire
+     frame, so the next stage lands hard on the bottom edge with no slack
+     left over anywhere. */
+  stageTight = natural.map(h => h > budget.full);
+  const targets = natural.map((h, k) =>
+    stageTight[k] ? budget.solo : Math.max(40, Math.min(budget.full, h)));
+
+  /* A stage opens, then HOLD units of scroll pass with it simply open —
+     that dwell is what makes it feel like arriving somewhere rather than a
+     table that breathes the whole way down. SWAP is the handover itself. */
+  const HOLD = 2.4, SWAP = 1;
+  const total = (n - 1) * (HOLD + SWAP) + HOLD;
+
+  stageTL = gsap.timeline({
+    scrollTrigger: {
+      trigger: gantt,
+      start: 'top ' + topbarPx() + 'px',
+      end: '+=' + Math.round(innerHeight * 0.42 * total),
+      pin: true,
+      pinSpacing: true,
+      anticipatePin: 1,
+      scrub: 1,
+      invalidateOnRefresh: true,
+      onUpdate: self => {
+        /* the title switches at the midpoint of the handover */
+        const t = self.progress * total;
+        const i = Math.max(0, Math.min(n - 1, Math.floor((t + SWAP/2) / (HOLD + SWAP))));
+        if (i !== GANTT.open) setActiveStage(i);
+      }
+    }
+  });
+
+  for (let i = 0; i < n - 1; i++){
+    stageTL.to({}, {duration: HOLD});                       /* stay open */
+    stageTL.to(bodies[i],   {height:0, opacity:0, duration:SWAP, ease:'power2.inOut'})
+           .to(bodies[i+1], {height:targets[i+1], opacity:1, duration:SWAP, ease:'power2.inOut'}, '<');
+  }
+  stageTL.to({}, {duration: HOLD});                         /* and the last */
+
+  /* Settle onto whichever stage the current scroll position belongs to. The
+     timeline was just rebuilt at progress 0, so read the trigger back rather
+     than assuming the first stage. */
+  const st = stageTL.scrollTrigger;
+  const at = st ? st.progress * total : 0;
+  const now = st
+    ? Math.max(0, Math.min(n - 1, Math.floor((at + SWAP/2) / (HOLD + SWAP))))
+    : was;
+  bodies.forEach((b, k) =>
+    gsap.set(b, {height: k === now ? targets[k] : 0, opacity: k === now ? 1 : 0}));
+  setActiveStage(now);
+}
+
+/* A chip scrolls to that stage's point on the timeline. */
+function jumpToSection(i, instant){
+  const n = stageSecs.length;
+  if (!stageTL || !stageTL.scrollTrigger || n < 2){ setActiveStage(i); return; }
+  const st = stageTL.scrollTrigger;
+  const HOLD = 2.4, SWAP = 1, total = (n - 1) * (HOLD + SWAP) + HOLD;
+  const t = i * (HOLD + SWAP) + HOLD * 0.5;      /* mid-dwell of that stage */
+  const y = st.start + (st.end - st.start) * (t / total);
+  if (instant){ window.scrollTo(0, y); return; }
+  if (window.lenis) lenis.scrollTo(y, {duration:1.2});
+  else window.scrollTo({top:y, behavior:'smooth'});
+}
+
+/* ---- expand a row to its line items ---------------------------------- */
+function setRowOpen(item, open, animate){
+  const sub = item.querySelector('.g-sub');
+  if (!sub) return;
+  item.classList.toggle('open', open);
+  let target = 0;
+  if (open){
+    const inner = sub.firstElementChild;
+    target = inner ? inner.getBoundingClientRect().height : 0;
+    if (!target){                            /* fall back to counting rows */
+      const lines = sub.querySelectorAll('.g-line').length;
+      target = lines * 27 + 11;
+    }
+  }
+  /* how much taller or shorter the row is about to get */
+  const was = sub.getBoundingClientRect().height;
+
+  if (animate && HAS_GSAP){
+    gsap.to(sub, {height:target, opacity:open ? 1 : 0,
+                  duration:0.5, ease:'power2.inOut', overwrite:true});
+  } else {
+    if (HAS_GSAP) gsap.killTweensOf(sub);
+    sub.style.height  = target + 'px';
+    sub.style.opacity = open ? 1 : 0;
+  }
+  growSection(item, target - was);
+}
+
+/* Let the stage around a row grow with it, so long as the frame allows. The
+   delta is passed in rather than measured: the row is still animating, so
+   reading its height a frame later would report almost nothing — which is why
+   a stage holding a single order refused to open at all. */
+function growSection(item, delta){
+  const sec = item.closest('.g-sec');
+  if (!sec || !sec.classList.contains('open') || !stageH) return;
+  const body  = sec.querySelector('.g-secbody');
+  const inner = sec.querySelector('.g-secinner');
+  const now   = inner ? inner.scrollHeight : 0;
+  const want  = Math.max(40, Math.min(stageH, now + (delta || 0)));
+  if (HAS_GSAP) gsap.to(body, {height:want, duration:0.5, ease:'power2.inOut', overwrite:'auto'});
+  else body.style.height = want + 'px';
+}
+
+/* Re-open whatever the reader had open before the rows were rebuilt. */
+function restoreExpanded(){
+  if (!EXPANDED.size) return;
+  document.querySelectorAll('#gBody .g-item').forEach(item => {
+    if (EXPANDED.has(item.dataset.oid)) setRowOpen(item, true, false);
+  });
+}
+
+/* a client opens to its jobs */
+function wireClientExpand(){
+  const el = document.getElementById('clientList');
+  if (!el) return;
+  el.addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    const head = e.target.closest('.t-row.head');
+    if (!head) return;
+    const group = head.parentElement;
+    const jobs = group.querySelector('.t-jobs');
+    const open = !group.classList.contains('open');
+    group.classList.toggle('open', open);
+    const rows = jobs.querySelectorAll('.t-row').length;
+    jobs.style.height = open ? (rows * 36) + 'px' : '0px';
+  });
+}
+
+function wireRowExpand(){
+  document.getElementById('gBody').addEventListener('click', e => {
+    if (e.target.closest('a')) return;              /* the order link wins */
+    /* elementFromPoint covers the case where the event was retargeted */
+    const row = e.target.closest('.g-row') ||
+      (document.elementFromPoint(e.clientX, e.clientY) || document.body).closest('.g-row');
+    if (!row) return;
+    const item = row.parentElement;
+    const open = !item.classList.contains('open');
+    if (open) EXPANDED.add(item.dataset.oid); else EXPANDED.delete(item.dataset.oid);
+    setRowOpen(item, open, true);
+  });
+}
+
+function wireSections(){
+  document.getElementById('gStages').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) jumpToSection(Number(b.dataset.i));
+  });
+  document.getElementById('gBody').addEventListener('click', e => {
+    const head = e.target.closest('.g-sechead');
+    if (head) jumpToSection(Number(head.parentElement.dataset.i));
+  });
+  addEventListener('resize', () => {
+    clearTimeout(window._stageT);
+    window._stageT = setTimeout(() => {
+      buildStageScroll();
+      if (HAS_GSAP) ScrollTrigger.refresh();
+    }, 220);
+  });
+}
+
+/* ---- Lenis: weight and glide, no trackpad jitter ---------------------- */
+function initSmoothScroll(){
+  if (typeof Lenis === 'undefined') return;
+  window.lenis = new Lenis({
+    duration: 1.45,
+    easing: t => Math.min(1, 1.001 - Math.pow(2, -10*t)),   /* long, soft settle */
+    wheelMultiplier: 0.85,
+    touchMultiplier: 1.4,
+    smoothWheel: true
+  });
+  if (HAS_GSAP){
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(t => lenis.raf(t * 1000));
+    gsap.ticker.lagSmoothing(0);
+  } else {
+    const raf = t => { lenis.raf(t); requestAnimationFrame(raf); };
+    requestAnimationFrame(raf);
+  }
+}
+
+/* ---- hover card ------------------------------------------------------- */
+function wireHoverCard(){
+  const body = document.getElementById('gBody');
+  const tip = document.createElement('div');
+  tip.className = 'g-tip';
+  document.body.appendChild(tip);
+
+  const place = e => {
+    const pad = 16, w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = e.clientX + pad, y = e.clientY + pad;
+    if (x + w > innerWidth - 8)  x = e.clientX - w - pad;
+    if (y + h > innerHeight - 8) y = e.clientY - h - pad;
+    tip.style.left = Math.max(8, x) + 'px';
+    tip.style.top  = Math.max(8, y) + 'px';
+  };
+
+  body.addEventListener('mousemove', e => {
+    const row = e.target.closest('.g-row');
+    if (!row){ tip.classList.remove('on'); return; }
+    const d = (row.dataset.tip || '').split('\u0001');
+    if (d.length < 8){ tip.classList.remove('on'); return; }
+    const lateCls = d[7] === 'late' ? ' class="late"' : '';
+    tip.innerHTML =
+      `<span class="h">${esc(d[0])}</span>` +
+      (d[1] ? `<span class="c">${esc(d[1])}</span>` : '') +
+      `<span class="k"><span>Centre</span><span>${esc(d[2])}</span></span>` +
+      `<span class="k"><span>Rep</span><span>${esc(d[8] || '—')}</span></span>` +
+      `<span class="k"><span>Stage</span><span>${esc(d[3])}</span></span>` +
+      `<span class="k"><span>Line items</span><span>${esc(d[4])}</span></span>` +
+      `<span class="k"><span>Progress</span><span>${esc(d[9] || '—')}</span></span>` +
+      `<span class="k"><span>Value</span><span>${esc(d[5])}</span></span>` +
+      `<span class="k"><span>Due</span><span${lateCls}>${esc(d[6])}</span></span>`;
+    tip.classList.add('on');
+    place(e);
+  });
+  body.addEventListener('mouseleave', () => tip.classList.remove('on'));
+  addEventListener('scroll', () => tip.classList.remove('on'), true);
+}
+
+function renderGanttAxis(win, half){
+  const axis  = document.getElementById('gAxis');
+  const lines = document.getElementById('gLines');
+  const byDay = win <= 21;
+  const step  = byDay ? 1 : win <= 30 ? 7 : win <= 60 ? 14 : 28;
+  document.getElementById('gantt').classList.toggle('byday', byDay);
+  const O     = GANTT.offset;
+  const pct   = off => ((off - O + half) / win) * 100;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  /* Ticks are anchored to today so the Today rule always lands on one, even
+     when the window has been panned away from it. */
+  const offs = [];
+  const first = Math.ceil((O - half) / step) * step;
+  for (let o = first; o <= O + half; o += step) offs.push(o);
+  if (O - half <= 0 && 0 <= O + half && !offs.includes(0)) offs.push(0);
+  offs.sort((a,b) => a-b);
+
+  /* Attention falls off with distance from today — yesterday and tomorrow
+     read at full strength, the far edges recede. */
+  const focus = o => {
+    const dist = Math.abs(o - O) / Math.max(1, half);
+    return (1 - Math.min(0.42, dist * 0.48)).toFixed(3);
+  };
+
+  axis.querySelector('.shift').innerHTML = offs.map(o => {
+    const d = new Date(today.getTime() + o*86400000);
+    if (byDay){
+      /* weekday over date — the day itself is what is being read */
+      const wd = o === 0 ? 'Today' : d.toLocaleDateString([], {weekday:'short'});
+      /* the month is named only on today and at the turn of a month —
+         everywhere else the number alone is enough and takes half the room */
+      const dm = (o === 0 || d.getDate() === 1)
+        ? d.toLocaleDateString([], {month:'short', day:'numeric'})
+        : String(d.getDate());
+      return `<span class="${o===0?'now':''}" style="left:${pct(o).toFixed(3)}%;` +
+             `opacity:${o===0?1:focus(o)}"><b>${wd}</b><em>${dm}</em></span>`;
+    }
+    const label = o === 0 ? 'Today' : d.toLocaleDateString([], {month:'short', day:'numeric'});
+    return `<span class="${o===0?'now':''}" style="left:${pct(o).toFixed(3)}%;` +
+           `opacity:${o===0?1:focus(o)}">${label}</span>`;
+  }).join('');
+
+  /* Weekends get a soft ground so the working days stand clear. */
+  const bands = byDay ? offs.filter(o => {
+    const wd = new Date(today.getTime() + o*86400000).getDay();
+    return wd === 0 || wd === 6;
+  }).map(o => `<u style="left:${pct(o - 0.5).toFixed(3)}%;width:${(100/win).toFixed(3)}%"></u>`).join('') : '';
+
+  lines.querySelector('.shift').innerHTML = bands + offs.map(o =>
+    `<i class="${o===0?'now':''}" style="left:${pct(o).toFixed(3)}%;` +
+    `opacity:${o===0?1:focus(o)}"></i>`).join('');
+}
+
+function renderCenterLegend(){
+  const el = document.getElementById('centerLegend');
+  if (!el) return;
+  el.innerHTML = CENTERS.map(c =>
+    `<div class="k"><span class="sw" style="background:${c.color};width:8px;height:8px;border-radius:1px"></span> ${esc(c.name)}</div>`
+  ).join('');
+}
+
+/* ---- drag the dates sideways ------------------------------------------
+   Panning only shifts one CSS variable while the pointer is down — every bar,
+   tick and rule rides the same transform, so it stays smooth with hundreds of
+   rows on screen. On release the offset is committed and the chart redraws at
+   the new dates. */
+function wireGanttPan(){
+  const gantt = document.getElementById('gantt');
+  const plot  = document.getElementById('gBody');
+  const track = () => Math.max(240, plot.clientWidth - trackLeftPx());
+
+  let dragging = false, startX = 0, panPx = 0, moved = false;
+
+  const setPan = px => { panPx = px; gantt.style.setProperty('--pan', px.toFixed(1) + 'px'); };
+
+  const commit = () => {
+    if (!panPx) return;
+    const days = panPx / track() * GANTT.win;
+    GANTT.offset = Math.round(GANTT.offset - days);
+    setPan(0);
+    markToday();
+    repaintTracks();          /* dates only — the stages are untouched */
+  };
+
+  plot.addEventListener('pointerdown', e => {
+    if (!e.target.closest('.g-track')) return;
+    dragging = true; moved = false; startX = e.clientX;
+    /* no pointer capture yet — taking it here would retarget the click that
+       follows a simple tap, and rows would stop opening */
+  });
+  plot.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 3 && !moved){
+      moved = true;                          /* now it is a drag, not a click */
+      try { plot.setPointerCapture(e.pointerId); } catch(_){}
+      if (window.lenis) lenis.stop();
+    }
+    if (moved) setPan(dx);
+  });
+  const end = e => {
+    if (!dragging) return;
+    dragging = false;
+    try { plot.releasePointerCapture(e.pointerId); } catch(_){}
+    if (moved) commit(); else setPan(0);
+    if (window.lenis) lenis.start();
+  };
+  plot.addEventListener('pointerup', end);
+  plot.addEventListener('pointercancel', end);
+  addEventListener('blur', () => { if (dragging) end({pointerId:null}); });
+
+  /* Trackpad sideways swipe does the same thing — but a swipe is never purely
+     sideways, so the first few events decide the axis and the gesture is then
+     locked to it. A sideways swipe cannot leak into the page scroll and open
+     the next stage, and a vertical scroll cannot nudge the dates. */
+  let wheelTimer = null, axis = null;
+
+  const releaseAxis = () => {
+    if (axis === 'x'){ commit(); if (window.lenis) lenis.start(); }
+    axis = null;
+  };
+
+  plot.addEventListener('wheel', e => {
+    const dx = Math.abs(e.deltaX), dy = Math.abs(e.deltaY);
+
+    if (axis === null){
+      if (dx < 2 && dy < 2) return;             /* too small to judge yet */
+      axis = dx > dy * 1.15 ? 'x' : 'y';
+      if (axis === 'x' && window.lenis) lenis.stop();
+    }
+
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(releaseAxis, 170);  /* gesture ends after a pause */
+
+    if (axis !== 'x') return;                   /* vertical: leave it alone */
+    e.preventDefault();
+    e.stopPropagation();
+    setPan(panPx - e.deltaX);
+  }, {passive:false});
+}
+
+function trackLeftPx(){
+  const cs = getComputedStyle(document.getElementById('gantt'));
+  const n = v => parseFloat(cs.getPropertyValue(v)) || 0;
+  return n('--c1') + n('--c2') + n('--c4') + 3*n('--gap');
+}
+
+function markToday(){
+  document.getElementById('gNav').querySelector('[data-n="0"]')
+    .setAttribute('aria-pressed', String(GANTT.offset !== 0));
+}
+
+function wireGantt(){
+  const bind = (id, attr, key, cast) => {
+    const group = document.getElementById(id);
+    group.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      GANTT[key] = cast ? cast(b.dataset[attr]) : b.dataset[attr];
+      if (key === 'group') GANTT.open = 0;
+      group.querySelectorAll('button').forEach(x =>
+        x.setAttribute('aria-pressed', String(x.dataset[attr] === String(GANTT[key]))));
+      /* changing the window only changes the dates */
+      if (key === 'win'){ GANTT.offset = 0; markToday(); repaintTracks(); return; }
+      renderGantt(visible());
+      document.getElementById('gBody').scrollTop = 0;
+    }));
+  };
+  bind('gGroup', 'g', 'group');
+  bind('gWin',   'w', 'win', Number);
+
+  /* Two arrows pan the dates by half a window; the middle returns to today. */
+  document.getElementById('gNav').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const n = Number(b.dataset.n);
+    GANTT.offset = n === 0 ? 0 : GANTT.offset + n * Math.round(GANTT.win/2);
+    markToday();
+    repaintTracks();
+  });
+}
+
+/* ============================================================
+   7c. BOARDS — ageing, load, and the two scorecards
+   ============================================================ */
+const AGE_BUCKETS = [
+  {k:'0-3',   test:a => a <= 3},
+  {k:'4-7',   test:a => a > 3  && a <= 7},
+  {k:'8-14',  test:a => a > 7  && a <= 14},
+  {k:'15-30', test:a => a > 14 && a <= 30},
+  {k:'30+',   test:a => a > 30}
+];
+
+const cell = (v, n, cls) =>
+  `<div class="mc ${v > 0 ? (cls||'') : 'zero'}">` +
+  `<span class="v">${v > 0 ? esc(money(v)) : '—'}</span>` +
+  `<span class="n">${n} ${n===1?'order':'orders'}</span></div>`;
+
+/* ---- where work is ageing ---------------------------------------------- */
+function renderAging(rows){
+  const el = document.getElementById('aging');
+  if (!el) return;
+  const orders = toOrders(rows);
+  const cols = AGE_BUCKETS.length;
+  el.style.gridTemplateColumns = `minmax(190px,1.4fr) repeat(${cols}, 1fr) 1fr`;
+
+  let html = `<div class="mc hd">Stage</div>` +
+    AGE_BUCKETS.map(b => `<div class="mc hd r">${b.k} days</div>`).join('') +
+    `<div class="mc hd r">Total</div>`;
+
+  STAGES.forEach(st => {
+    const inStage = orders.filter(o => o.queue === st.name);
+    if (!inStage.length) return;
+    html += `<div class="mc rowhd">${esc(st.name)}</div>`;
+    AGE_BUCKETS.forEach(b => {
+      const set = inStage.filter(o => b.test(o.age === null ? 0 : o.age));
+      const late = set.filter(o => o.daysLate !== null && o.daysLate > 0).length;
+      html += cell(set.reduce((a,o)=>a+o.value,0), set.length,
+                   late && late === set.length ? 'late' : '');
+    });
+    html += cell(inStage.reduce((a,o)=>a+o.value,0), inStage.length, 'tot');
+  });
+
+  /* the column totals say which age band is holding the money */
+  html += `<div class="mc rowhd tot">All stages</div>`;
+  AGE_BUCKETS.forEach(b => {
+    const set = orders.filter(o => b.test(o.age === null ? 0 : o.age));
+    html += cell(set.reduce((a,o)=>a+o.value,0), set.length, 'tot');
+  });
+  html += cell(orders.reduce((a,o)=>a+o.value,0), orders.length, 'tot');
+  el.innerHTML = html;
+}
+
+/* ---- what falls due next ----------------------------------------------- */
+function renderLoad(rows){
+  const el = document.getElementById('load');
+  if (!el) return;
+  const orders = toOrders(rows);
+  const DAYS = 14;
+  const today = new Date(); today.setHours(0,0,0,0);
+  el.style.gridTemplateColumns = `minmax(150px,1fr) repeat(${DAYS}, 1fr)`;
+
+  const dayOf = o => o.daysLate === null ? null : -o.daysLate;
+
+  let html = `<div class="mc hd">Centre</div>`;
+  for (let d = 0; d < DAYS; d++){
+    const dt = new Date(today.getTime() + d*86400000);
+    const wd = dt.getDay();
+    html += `<div class="mc hd r${d===0?' today':''}${wd===0||wd===6?' weekend':''}">` +
+            `${dt.toLocaleDateString([], {weekday:'short'})}<br>${dt.getDate()}</div>`;
+  }
+
+  const rowFor = (name, color, list) => {
+    let out = `<div class="mc rowhd">` +
+      (color ? `<span style="display:inline-block;width:8px;height:8px;border-radius:1px;background:${color};margin-right:8px"></span>` : '') +
+      `${esc(name)}</div>`;
+    for (let d = 0; d < DAYS; d++){
+      const set = list.filter(o => dayOf(o) === d);
+      const wd = new Date(today.getTime() + d*86400000).getDay();
+      out += cell(set.reduce((a,o)=>a+o.value,0), set.length,
+                  (d===0?'today ':'') + (wd===0||wd===6?'weekend':''));
+    }
+    return out;
+  };
+
+  CENTERS.forEach(c => {
+    const list = orders.filter(o => o.center === c.name);
+    if (list.length) html += rowFor(c.name, c.color, list);
+  });
+  html += rowFor('All centres', null, orders).replace(/class="mc /g, 'class="mc tot ');
+  el.innerHTML = html;
+}
+
+/* ---- scorecards --------------------------------------------------------- */
+function scoreRows(groups){
+  const worst = Math.max(1, ...groups.map(g => g.lateValue));
+  return groups.map(g => {
+    const pct = g.value > 0 ? Math.round(g.lateValue / g.value * 100) : 0;
+    return `<div class="sc name">${g.color ? `<i style="background:${g.color}"></i>` : ''}${esc(g.name)}</div>
+      <div class="sc r">${esc(money(g.value))}</div>
+      <div class="sc r late">${esc(money(g.lateValue))}</div>
+      <div class="sc r"><span class="bar"><b style="width:${Math.min(100, g.lateValue/worst*100).toFixed(0)}%"></b></span></div>
+      <div class="sc r">${pct}%</div>
+      <div class="sc r">${g.orders}</div>
+      <div class="sc r late">${g.lateCount || '—'}</div>
+      <div class="sc r">${g.dueToday}</div>
+      <div class="sc r">${g.avgLate}d</div>
+      <div class="sc r">${g.oldest}d</div>`;
+  }).join('');
+}
+
+function groupStats(name, color, list){
+  const late = list.filter(o => o.daysLate !== null && o.daysLate > 0);
+  return {
+    name, color,
+    value: list.reduce((a,o)=>a+o.value,0),
+    lateValue: late.reduce((a,o)=>a+o.value,0),
+    lateCount: late.length,
+    orders: list.length,
+    dueToday: list.filter(o => o.daysLate === 0).length,
+    avgLate: late.length ? Math.round(late.reduce((a,o)=>a+o.daysLate,0)/late.length) : 0,
+    oldest: list.reduce((a,o)=>Math.max(a, o.age || 0), 0)
+  };
+}
+
+function scoreHead(first){
+  return `<div class="sc hd">${first}</div>
+    <div class="sc hd r">Open</div>
+    <div class="sc hd r">Overdue</div>
+    <div class="sc hd r"></div>
+    <div class="sc hd r">% Late</div>
+    <div class="sc hd r">Orders</div>
+    <div class="sc hd r">Late</div>
+    <div class="sc hd r">Due Today</div>
+    <div class="sc hd r">Avg Late</div>
+    <div class="sc hd r">Oldest</div>`;
+}
+
+/* The ten biggest open jobs in whatever the header and scope are showing —
+   the schedule's row language, ranked, with the order number linking through
+   to CoreBridge. */
+function renderTopList(rows){
+  const el = document.getElementById('topList');
+  if (!el) return;
+  const top = toOrders(rows).sort((a,b) => b.value - a.value).slice(0, 10);
+
+  const head = `<div class="t-row hdr">
+    <span></span><span>Order</span><span>Job description</span>
+    <span>Centre</span><span>Rep</span><span>Built</span>
+    <span class="rt">Value</span><span class="rt">Due</span>
+  </div>`;
+
+  el.innerHTML = head + top.map((r, i) => {
+    const u = urgencyOf(r);
+    const dueCls = u === 'late' ? ' late' : u === 'today' ? ' today' : '';
+    const color = COLOR_OF[r.center] || '#9A9BA3';
+    const link = ORDER_URL(r);
+    const num = esc(r.order || r.orderId);
+    const name = (r.rep || '').trim();
+    const sp = name.indexOf(' ');
+
+    return `<div class="t-row">
+      <span class="t-rank">${String(i+1).padStart(2,'0')}</span>
+      <span class="t-main">
+        ${link ? `<a href="${link}" target="_blank" rel="noopener">${num}</a>`
+               : `<span class="num">${num}</span>`}
+        <span class="cust">${esc(r.customer || '—')}</span>
+        ${r.count > 1 ? `<span class="ct">${r.count}&#215;</span>` : ''}
+      </span>
+      <span class="t-desc">${esc(r.desc || '—')}</span>
+      <span class="t-ctr"><i style="background:${color}"></i>${esc(r.center || '—')}</span>
+      <span class="t-rep">${name
+        ? `<span>${esc(sp < 0 ? name : name.slice(0, sp))}</span>` +
+          (sp < 0 ? '' : `<span>${esc(name.slice(sp+1))}</span>`)
+        : '<span>—</span>'}</span>
+      ${progressHTML(r)}
+      <span class="t-val">${esc(money(r.value))}</span>
+      <span class="t-due${dueCls}">${esc(dueLabel(r))}</span>
+    </div>`;
+  }).join('');
+
+  renderChart(document.getElementById('topBars'), top.map((r,i) => ({
+    label: (r.order || r.orderId) + ' · ' + (r.customer || ''),
+    short: String(i+1).padStart(2,'0'),
+    value: r.value,
+    late: (r.daysLate !== null && r.daysLate > 0) ? r.value : 0
+  })));
+}
+
+/* A column chart against a scaled axis: the column is open value, the claret
+   foot is the overdue part of it. Everything on the page shares one scope, so
+   these follow the header and the Needs Action / Overdue / Due Today choice
+   without a control of their own. */
+function niceMax(v){
+  if (v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v / mag;
+  const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+  return step * mag;
+}
+
+function renderChart(el, items){
+  if (!el) return;
+  if (!items.length){ el.innerHTML = ''; return; }
+
+  const top = niceMax(Math.max(...items.map(i => i.value)));
+  const TICKS = 4;
+
+  let grid = '';
+  for (let t = 0; t <= TICKS; t++){
+    const pct = t / TICKS;
+    grid += `<i style="bottom:${(pct*100).toFixed(2)}%"></i>` +
+            `<u style="bottom:${(pct*100).toFixed(2)}%">${esc(money(top*pct))}</u>`;
+  }
+
+  const cols = items.map(i => {
+    const h = (i.value / top) * 100;
+    const late = i.value > 0 ? Math.min(i.late, i.value) / i.value * 100 : 0;
+    return `<div class="chart-col" title="${esc(i.label)} · ${esc(money(i.value))}` +
+           `${i.late > 0 ? ' · ' + esc(money(i.late)) + ' overdue' : ''}">
+      <span class="cval" style="bottom:${Math.max(0.6, h).toFixed(2)}%">${esc(money(i.value))}</span>
+      <span class="stack" style="height:${Math.max(0.6, h).toFixed(2)}%">
+        <b style="height:${late.toFixed(2)}%;top:${(100-late).toFixed(2)}%"></b></span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML =
+    `<div class="chart-plot"><div class="chart-grid">${grid}</div>` +
+    `<div class="chart-cols">${cols}</div></div>` +
+    `<div class="chart-x">${items.map(i => `<span>${esc(i.short)}</span>`).join('')}</div>`;
+}
+
+/* The ten biggest clients, each opening to the jobs behind the figure. */
+function renderClientList(rows){
+  const el = document.getElementById('clientList');
+  if (!el) return;
+  const orders = toOrders(rows);
+  const names = [...new Set(orders.map(o => (o.customer || '').trim()).filter(Boolean))];
+
+  const clients = names.map(n => {
+    const list = orders.filter(o => (o.customer||'').trim() === n)
+                       .sort((a,b) => b.value - a.value);
+    const late = list.filter(o => o.daysLate !== null && o.daysLate > 0);
+    return {
+      name: n, list,
+      value: list.reduce((a,o)=>a+o.value,0),
+      lateValue: late.reduce((a,o)=>a+o.value,0),
+      lateCount: late.length
+    };
+  }).sort((a,b) => b.value - a.value).slice(0, 10);
+
+  const head = `<div class="t-row hdr">
+    <span></span><span>Client</span><span>Jobs</span>
+    <span></span><span></span><span class="rt">Late</span>
+    <span class="rt">Open</span><span class="rt">Overdue</span>
+  </div>`;
+
+  el.innerHTML = head + clients.map((c, i) => {
+    const jobs = c.list.map(o => {
+      const u = urgencyOf(o);
+      const cls = u === 'late' ? ' late' : u === 'today' ? ' today' : '';
+      const link = ORDER_URL(o);
+      const num = esc(o.order || o.orderId);
+      return `<div class="t-row sub">
+        <span class="t-rank"></span>
+        <span class="t-main">${link
+          ? `<a href="${link}" target="_blank" rel="noopener">${num}</a>`
+          : `<span class="num">${num}</span>`}</span>
+        <span class="t-desc">${esc(o.desc || '—')}</span>
+        <span class="t-ctr"><i style="background:${COLOR_OF[o.center] || '#9A9BA3'}"></i>${esc(o.center || '—')}</span>
+        <span class="t-rep">${esc(o.queue)}</span>
+        ${progressHTML(o)}
+        <span class="t-val">${esc(money(o.value))}</span>
+        <span class="t-due${cls}">${esc(dueLabel(o))}</span>
+      </div>`;
+    }).join('');
+
+    return `<div class="t-group">
+      <div class="t-row head" data-i="${i}">
+        <span class="t-rank">${String(i+1).padStart(2,'0')}</span>
+        <span class="t-main"><span class="num">${esc(c.name)}</span></span>
+        <span class="t-desc">${c.list.length} ${c.list.length===1?'job':'jobs'}</span>
+        <span class="t-ctr"></span>
+        <span class="t-rep"></span>
+        <span class="t-late">${c.lateCount ? c.lateCount + ' late' : ''}</span>
+        <span class="t-val">${esc(money(c.value))}</span>
+        <span class="t-due${c.lateValue ? ' late' : ''}">${c.lateValue ? esc(money(c.lateValue)) : '—'}</span>
+      </div>
+      <div class="t-jobs">${jobs}</div>
+    </div>`;
+  }).join('');
+
+  renderChart(document.getElementById('clientBars'), clients.map(c => ({
+    label: c.name,
+    short: c.name.length > 14 ? c.name.slice(0,13) + '…' : c.name,
+    value: c.value, late: c.lateValue
+  })));
+}
+
+/* ---- order size against late rate ------------------------------------- */
+const SIZE_BANDS = [
+  {k:'Under $250', test:v => v < 250},
+  {k:'$250 – $1K',  test:v => v >= 250 && v < 1000},
+  {k:'$1K – $5K',   test:v => v >= 1000 && v < 5000},
+  {k:'$5K and up',  test:v => v >= 5000}
+];
+
+function renderSizeBoard(rows){
+  const el = document.getElementById('sizeMatrix');
+  if (!el) return;
+  const orders = toOrders(rows);
+  el.style.gridTemplateColumns = 'minmax(150px,1.2fr) repeat(5, 1fr)';
+
+  let html = `<div class="mc hd">Order size</div>
+    <div class="mc hd r">Orders</div><div class="mc hd r">Open</div>
+    <div class="mc hd r">Late</div><div class="mc hd r">Overdue</div>
+    <div class="mc hd r">% Late</div>`;
+
+  const bands = SIZE_BANDS.map(b => {
+    const set = orders.filter(o => b.test(o.value));
+    const late = set.filter(o => o.daysLate !== null && o.daysLate > 0);
+    return {
+      k: b.k, set, late,
+      value: set.reduce((a,o)=>a+o.value,0),
+      lateValue: late.reduce((a,o)=>a+o.value,0),
+      pct: set.length ? Math.round(late.length/set.length*100) : 0
+    };
+  });
+
+  bands.forEach(b => {
+    html += `<div class="mc rowhd">${esc(b.k)}</div>` +
+      `<div class="mc"><span class="v">${b.set.length}</span></div>` +
+      `<div class="mc"><span class="v">${esc(money(b.value))}</span></div>` +
+      `<div class="mc ${b.late.length?'late':'zero'}"><span class="v">${b.late.length || '—'}</span></div>` +
+      `<div class="mc ${b.lateValue?'late':'zero'}"><span class="v">${b.lateValue?esc(money(b.lateValue)):'—'}</span></div>` +
+      `<div class="mc ${b.pct>=50?'late':''}"><span class="v">${b.pct}%</span></div>`;
+  });
+  el.innerHTML = html;
+
+  renderChart(document.getElementById('sizeChart'), bands.map(b => ({
+    label: b.k + ' · ' + b.pct + '% late', short: b.k, value: b.value, late: b.lateValue
+  })));
+}
+
+/* ---- product mix, read from the descriptions ---------------------------- */
+const FAMILIES = [
+  {k:'Installation',            re:/INSTALL/i},
+  {k:'Permits & Survey',        re:/PERMIT|SURVEY|SITE\s*VISIT/i},
+  {k:'Design & Setup',          re:/DESIGN|VECTOR|SETUP|SET UP|PROOF|ARTWORK|PATTERN/i},
+  {k:'Illuminated & Dimensional', re:/CHANNEL|HALO|ILLUMIN|LIGHTBOX|LIGHT BOX|MONUMENT|DIMENSIONAL|CABINET/i},
+  {k:'Vehicle & Vinyl',         re:/VINYL|WRAP|DECAL|CAST |PRINT MEDIA|PERFORATED/i},
+  {k:'ADA & Wayfinding',        re:/\bADA\b|ROOM ID|WAYFIND|DIRECTORY/i},
+  {k:'Rigid Substrate',         re:/ACRYLIC|ACP|ALUMINUM|PVC|POLYSTYRENE|MDO|COROPLAST|FOAM/i},
+  {k:'Banners & Soft Signage',  re:/BANNER|MESH|FABRIC|BACKDROP|STEP AND REPEAT/i},
+  {k:'Print & Paper',           re:/POSTCARD|POSTER|BROCHURE|PAPER|BUSINESS CARD|MENU/i}
+];
+
+function familyOf(desc){
+  const d = String(desc || '');
+  for (const f of FAMILIES) if (f.re.test(d)) return f.k;
+  return 'Other';
+}
+
+function renderMixBoard(rows){
+  const el = document.getElementById('mixMatrix');
+  if (!el) return;
+  /* families live at line-item level — that is where the description is */
+  const byFam = new Map();
+  rows.forEach(r => {
+    const k = familyOf(r.desc);
+    if (!byFam.has(k)) byFam.set(k, []);
+    byFam.get(k).push(r);
+  });
+
+  const fams = [...byFam.entries()].map(([k, list]) => {
+    const late = list.filter(r => r.daysLate !== null && r.daysLate > 0);
+    return {
+      k, list, late,
+      value: list.reduce((a,r)=>a+r.value,0),
+      lateValue: late.reduce((a,r)=>a+r.value,0),
+      pct: list.length ? Math.round(late.length/list.length*100) : 0
+    };
+  }).sort((a,b) => b.value - a.value);
+
+  el.style.gridTemplateColumns = 'minmax(200px,1.4fr) repeat(4, 1fr)';
+  let html = `<div class="mc hd">Product family</div>
+    <div class="mc hd r">Line items</div><div class="mc hd r">Open</div>
+    <div class="mc hd r">Overdue</div><div class="mc hd r">% Late</div>`;
+  fams.forEach(f => {
+    html += `<div class="mc rowhd">${esc(f.k)}</div>` +
+      `<div class="mc"><span class="v">${f.list.length}</span></div>` +
+      `<div class="mc"><span class="v">${esc(money(f.value))}</span></div>` +
+      `<div class="mc ${f.lateValue?'late':'zero'}"><span class="v">${f.lateValue?esc(money(f.lateValue)):'—'}</span></div>` +
+      `<div class="mc ${f.pct>=50?'late':''}"><span class="v">${f.pct}%</span></div>`;
+  });
+  el.innerHTML = html;
+
+  renderChart(document.getElementById('mixChart'), fams.slice(0, 8).map(f => ({
+    label: f.k + ' · ' + f.pct + '% late',
+    short: f.k.split(' ')[0],
+    value: f.value, late: f.lateValue
+  })));
+}
+
+/* ---- whose work sits where --------------------------------------------- */
+function renderRepStage(rows){
+  const el = document.getElementById('repStage');
+  if (!el) return;
+  const orders = toOrders(rows);
+  const stages = STAGES.filter(st => orders.some(o => o.queue === st.name));
+  const reps = [...new Set(orders.map(o => (o.rep||'').trim()).filter(Boolean))]
+    .map(n => ({n, v: orders.filter(o => (o.rep||'').trim()===n).reduce((a,o)=>a+o.value,0)}))
+    .sort((a,b) => b.v - a.v).slice(0, 12).map(x => x.n);
+
+  el.style.gridTemplateColumns = `minmax(150px,1.2fr) repeat(${stages.length}, 1fr) 0.9fr`;
+  let html = `<div class="mc hd">Salesperson</div>` +
+    stages.map(st => `<div class="mc hd r">${esc(st.name)}</div>`).join('') +
+    `<div class="mc hd r">Total</div>`;
+
+  reps.forEach(n => {
+    const mine = orders.filter(o => (o.rep||'').trim() === n);
+    html += `<div class="mc rowhd">${esc(n)}</div>`;
+    stages.forEach(st => {
+      const set = mine.filter(o => o.queue === st.name);
+      const late = set.filter(o => o.daysLate !== null && o.daysLate > 0).length;
+      html += cell(set.reduce((a,o)=>a+o.value,0), set.length,
+                   late && late === set.length ? 'late' : '');
+    });
+    html += cell(mine.reduce((a,o)=>a+o.value,0), mine.length, 'tot');
+  });
+  el.innerHTML = html;
+}
+
+/* ---- is it getting better ----------------------------------------------
+   The dashboard is a snapshot; nothing in the API tells you what yesterday
+   looked like. So once a day this records the headline totals in the
+   browser's own storage and draws the line from them. It is per-machine and
+   per-file — a private log, not a shared one. */
+const TREND_KEY = 'fs_trend_v1';
+const TREND_MAX = 60;
+
+function trendRead(){
+  try { return JSON.parse(localStorage.getItem(TREND_KEY) || '[]'); }
+  catch(_){ return []; }
+}
+
+function trendSave(rows){
+  try {
+    const all = toOrders(rows);
+    const late = all.filter(o => o.daysLate !== null && o.daysLate > 0);
+    const today = all.filter(o => o.daysLate === 0);
+    const d = new Date(); d.setHours(0,0,0,0);
+    const key = d.toISOString().slice(0,10);
+
+    const log = trendRead().filter(e => e.d !== key);
+    log.push({
+      d: key,
+      open: all.reduce((a,o)=>a+o.value,0),
+      late: late.reduce((a,o)=>a+o.value,0),
+      today: today.reduce((a,o)=>a+o.value,0),
+      orders: all.length,
+      items: rows.length
+    });
+    log.sort((a,b) => a.d < b.d ? -1 : 1);
+    localStorage.setItem(TREND_KEY, JSON.stringify(log.slice(-TREND_MAX)));
+  } catch(_){ /* storage unavailable — the view simply stays empty */ }
+}
+
+function renderTrend(){
+  const el = document.getElementById('trend');
+  const sub = document.getElementById('trendSub');
+  if (!el) return;
+  const log = trendRead();
+
+  if (log.length < 2){
+    el.innerHTML = `<div class="trend-empty">Recording from today — the line appears once there are two days to compare.</div>`;
+    if (sub) sub.textContent = 'The only view here that is not a snapshot. Two lines over time, so you can tell whether what you changed last week actually worked.';
+    return;
+  }
+  if (sub) sub.textContent = `${log.length} days recorded`;
+
+  const W = 1000, H = 240, L = 62, R = 8, T = 16, B = 28;
+  const top = niceMax(Math.max(...log.map(e => e.open)));
+  const x = i => L + (i / (log.length - 1)) * (W - L - R);
+  const y = v => T + (1 - v/top) * (H - T - B);
+
+  let grid = '', ticks = 4;
+  for (let t = 0; t <= ticks; t++){
+    const v = top * t / ticks, yy = y(v);
+    grid += `<line class="grid" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/>` +
+            `<text class="y" x="${L-10}" y="${yy+3.5}">${esc(money(v))}</text>`;
+  }
+
+  const path = key => log.map((e,i) => `${i?'L':'M'}${x(i).toFixed(1)},${y(e[key]).toFixed(1)}`).join(' ');
+  const area = `M${x(0).toFixed(1)},${y(0).toFixed(1)} ` +
+    log.map((e,i) => `L${x(i).toFixed(1)},${y(e.open).toFixed(1)}`).join(' ') +
+    ` L${x(log.length-1).toFixed(1)},${y(0).toFixed(1)} Z`;
+
+  const dots = log.map((e,i) =>
+    `<circle class="dot" style="stroke:var(--blue)" cx="${x(i).toFixed(1)}" cy="${y(e.open).toFixed(1)}" r="3"/>` +
+    `<circle class="dot" style="stroke:var(--red)" cx="${x(i).toFixed(1)}" cy="${y(e.late).toFixed(1)}" r="3"/>`).join('');
+
+  const every = Math.ceil(log.length / 8);
+  const xlab = log.map((e,i) => (i % every === 0 || i === log.length-1)
+    ? `<text class="x" x="${x(i).toFixed(1)}" y="${H-8}">${new Date(e.d+'T00:00:00')
+        .toLocaleDateString([], {month:'short', day:'numeric'})}</text>` : '').join('');
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${grid}
+    <path class="areaOpen" d="${area}"/>
+    <path class="lineOpen" d="${path('open')}"/>
+    <path class="lineLate" d="${path('late')}"/>
+    ${dots}
+    <line class="axis" x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}"/>
+    ${xlab}
+  </svg>`;
+}
+
+function renderRepBoard(rows){
+  const el = document.getElementById('repBoard');
+  if (!el) return;
+  const orders = toOrders(rows);
+  const names = [...new Set(orders.map(o => (o.rep || '').trim()).filter(Boolean))];
+  const groups = names.map(n => groupStats(n, null, orders.filter(o => (o.rep||'').trim() === n)))
+                      .sort((a,b) => b.lateValue - a.lateValue || b.value - a.value);
+  el.style.gridTemplateColumns = 'minmax(160px,1.4fr) repeat(2,1fr) 90px repeat(6,0.75fr)';
+  el.innerHTML = scoreHead('Salesperson') + scoreRows(groups);
+  renderChart(document.getElementById('repChart'), groups.slice(0, 10).map(g => ({
+    label: g.name,
+    short: g.name.split(' ')[0],
+    value: g.value, late: g.lateValue
+  })));
+}
+
+function renderCentreBoard(rows){
+  const el = document.getElementById('ctrBoard');
+  if (!el) return;
+  const orders = toOrders(rows);
+  const groups = CENTERS
+    .map(c => groupStats(c.name, c.color, orders.filter(o => o.center === c.name)))
+    .filter(g => g.orders)
+    .sort((a,b) => b.lateValue - a.lateValue);
+  el.style.gridTemplateColumns = 'minmax(160px,1.4fr) repeat(2,1fr) 90px repeat(6,0.75fr)';
+  el.innerHTML = scoreHead('Centre') + scoreRows(groups);
+  renderChart(document.getElementById('ctrChart'), groups.map(g => ({
+    label: g.name, short: g.name, value: g.value, late: g.lateValue
+  })));
+}
+
+function renderTotals(rows){
+  const sum  = a => a.reduce((s,r) => s + r.value, 0);
+  const late = rows.filter(r => r.daysLate !== null && r.daysLate > 0);
+  const today = rows.filter(r => r.daysLate === 0);
+  const orders = new Set(rows.map(r => r.orderId)).size;
+  const items = n => n.toLocaleString() + (n === 1 ? ' item' : ' items');
+
+  const put = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  put('tOpen',    money(sum(rows)));
+  put('tOpenN',   items(rows.length));
+  put('tLate',    money(sum(late)));
+  put('tLateN',   items(late.length));
+  put('tToday',   money(sum(today)));
+  put('tTodayN',  items(today.length));
+  put('tOrders',  orders.toLocaleString());
+  put('tOrdersN', 'open right now');
+  put('tItems',   rows.length.toLocaleString());
+  put('tItemsN',  'across the board');
+}
+
+/* The ring splits by whatever the header is not already telling you:
+     Both Districts → Valley against South Bay
+     Valley / South Bay → the centres inside that district
+     All Centres → all five
+     one centre → that centre alone */
+function ringParts(s){
+  const L = state.lens;
+
+  if (L === 'districts')
+    return [{name:'Valley',    color:'var(--red)',  value:s.valley},
+            {name:'South Bay', color:'var(--blue)', value:s.southbay}];
+
+  if (L === 'valley' || L === 'southbay')
+    return CENTERS.filter(c => c.facility === L)
+                  .map(c => ({name:c.name, color:c.color, value:s.byCenter[c.name] || 0}));
+
+  if (L === 'centers')
+    return CENTERS.map(c => ({name:c.name, color:c.color, value:s.byCenter[c.name] || 0}));
+
+  const one = CENTERS.find(c => c.name === L);
+  return one ? [{name:one.name, color:one.color, value:s.byCenter[one.name] || 0}] : [];
+}
+
+function renderDetails(S){
+  const el = document.getElementById('detailsGrid');
+
+  /* Each stage is a ring. By district it carries two arcs — Valley in
+     FASTSIGNS red, South Bay in Riviera navy. By centre it carries five, in
+     the fixed centre colours, so you can see at a glance which centre is
+     carrying a stage. The figure sits inside the ring. */
+  const R = 54, C = 2 * Math.PI * R, GAP = 3;
+
+  const parts = ringParts;
+
+  el.innerHTML = S.map(s => {
+    const ps  = parts(s).filter(p => p.value > 0);
+    const tot = ps.reduce((a,p) => a+p.value, 0);
+    const trim = ps.length > 1 ? GAP : 0;
+
+    let at = 0;
+    const arcs = ps.map(p => {
+      const len = (p.value / tot) * C;
+      const seg = `<circle class="arc" cx="70" cy="70" r="${R}" style="stroke:${p.color}"
+        stroke-dasharray="${Math.max(0.6, len - trim).toFixed(2)} ${C.toFixed(2)}"
+        stroke-dashoffset="${(-at).toFixed(2)}"/>`;
+      at += len;
+      return seg;
+    }).join('');
+
+    const caption = parts(s)
+      .filter(p => state.lens === 'districts' || p.value > 0)
+      .map(p => `<b><i style="background:${p.color}"></i>${esc(p.name)} ${esc(money(p.value))}</b>`)
+      .join('');
+
+    return `<figure class="ring-card">
+      <span class="nm">${esc(s.name)}</span>
+      <div class="ring-wrap">
+        <svg viewBox="0 0 140 140" aria-hidden="true">
+          <circle class="track" cx="70" cy="70" r="${R}"/>
+          ${tot > 0 ? arcs : ''}
+        </svg>
+        <div class="ring-mid">
+          <span class="v">${esc(money(s.value))}</span>
+          <span class="n">${s.count} ${s.count===1?'item':'items'} · ${esc(s.share)}</span>
+        </div>
+      </div>
+      <figcaption>
+        <span class="sp">${caption || '<b class="none">No open work</b>'}</span>
+      </figcaption>
+    </figure>`;
+  }).join('');
+}
+
+
+
+
+function renderUnmapped(rows){
+  const known = new Set(STAGES.map(s => s.name));
+  const seen = new Map();
+  for (const r of rows){
+    if (known.has(r.queue)) continue;
+    const e = seen.get(r.queue) || {count:0, value:0};
+    e.count++; e.value += r.value;
+    seen.set(r.queue, e);
+  }
+
+  const inst = new Map();
+  for (const r of rows){
+    if (!r.category || !/install/i.test(r.category)) continue;
+    const e = inst.get(r.category) || {count:0, value:0};
+    e.count++; e.value += r.value;
+    inst.set(r.category, e);
+  }
+
+  const el = document.getElementById('unmapped');
+  if (!seen.size && !inst.size){ el.classList.remove('show'); return; }
+
+  let html = '';
+  if (seen.size){
+    html += '<b>Queues in your data that this chart is not showing.</b><br>' +
+      [...seen.entries()].sort((a,b) => b[1].value - a[1].value)
+        .map(([q,e]) => `<code>${esc(q)}</code> — ${esc(money(e.value))}, ${e.count} items`)
+        .join('<br>');
+  }
+  if (inst.size){
+    if (html) html += '<br><br>';
+    html += '<b>Installation work found by product category.</b><br>' +
+      [...inst.entries()].sort((a,b) => b[1].value - a[1].value)
+        .map(([c,e]) => `<code>${esc(c)}</code> — ${esc(money(e.value))}, ${e.count} items`)
+        .join('<br>');
+  }
+  el.innerHTML = html;
+  el.classList.add('show');
+}
+
+function renderRules(n){
+  document.getElementById('rules').innerHTML =
+    Array.from({length:n-1},(_,i)=>`<span style="left:${((i+1)/n)*100}%"></span>`).join('');
+}
+
+function renderSkeleton(){
+  const S = STAGES.map((st,i) => ({...st, idx:i+1, count:0, value:0, valley:0, southbay:0,
+    byCenter: Object.fromEntries(CENTERS.map(c => [c.name, 0]))}));
+  document.body.classList.add('loading');
+  renderRules(S.length);
+  renderHeads(S);
+  renderFlow(S);
+  renderFoots(S, false);
+  document.getElementById('tOpen').textContent = '—';
+  document.getElementById('tLate').textContent = '—';
+  document.getElementById('tItems').textContent = '—';
+  document.getElementById('stamp').textContent = 'Fetching from CoreBridge';
+  document.getElementById('detailsGrid').innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--ink-faint);font-size:13px;">Loading stage data...</div>';
+  metricsRevealed = false;
+}
+
+/* The ribbon, the rings and the totals can be narrowed to what is due today;
+   the schedule keeps its own scope control and is left alone. */
+function inScope(r){
+  const d = state.due;
+  if (d === 'today') return r.daysLate === 0;
+  if (d === 'late')  return r.daysLate !== null && r.daysLate > 0;
+  if (d === 'act')   return r.daysLate !== null && r.daysLate >= -7;
+  return true;
+}
+
+function chartRows(){ return visible().filter(inScope); }
+
+function render(){
+  document.body.classList.remove('loading');
+  const rows = visible();
+  const cr = chartRows();
+  const S = build(cr);
+  renderTotals(cr);
+  renderRules(S.length);
+  renderHeads(S);
+  renderFlow(S);
+  renderFoots(S, metricsRevealed);
+  renderDetails(S);
+  renderAging(cr);
+  renderLoad(cr);
+  renderTopList(cr);
+  renderClientList(cr);
+  renderSizeBoard(cr);
+  renderMixBoard(cr);
+  renderRepStage(cr);
+  renderRepBoard(cr);
+  renderCentreBoard(cr);
+  renderGantt(rows);
+  renderUnmapped(rows);
+}
+
+/* ============================================================
+   8. SCROLL INTERACTION
+   ============================================================ */
+function setupScroll(){
+  const masthead  = document.getElementById('masthead');
+  const tools     = document.getElementById('tools');
+  const subText   = document.getElementById('subText');
+  const details   = document.getElementById('detailsPanel');
+
+  /* Reveal has hysteresis so a hand resting on the trackpad at the threshold
+     cannot flutter the metrics open and shut. */
+  const REVEAL_IN = 0.06, REVEAL_OUT = 0.035;
+
+  const clamp = (v,a,b) => Math.min(Math.max(v,a),b);
+  const track = (p,a,b) => clamp((p-a)/(b-a), 0, 1);
+  const ease  = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;   // easeInOutCubic
+
+  const reduced = typeof matchMedia === 'function' &&
+    matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let raw = 0, smooth = 0, running = false;
+
+  function paint(p){
+    /* Masthead recedes rather than switching state. */
+    const f = ease(track(p, 0, 0.16));
+    masthead.style.opacity = (1 - 0.56*f).toFixed(3);
+    tools.style.opacity    = (1 - 0.68*f).toFixed(3);
+    tools.style.transform  = 'scale(' + (1 - 0.07*f).toFixed(4) + ')';
+
+    const t = ease(track(p, 0, 0.11));
+    subText.style.opacity   = (1 - t).toFixed(3);
+    subText.style.maxHeight = ((1 - t) * 44).toFixed(1) + 'px';
+    subText.style.marginTop = ((1 - t) * 6).toFixed(1) + 'px';
+
+    const want = p > (metricsRevealed ? REVEAL_OUT : REVEAL_IN);
+    if (want !== metricsRevealed) setMetricsRevealed(want);
+
+    /* The analytics panel rises over the hero, opacity and lift tied to the
+       damped value so it tracks the wheel instead of snapping on a threshold. */
+    /* No transform here: a transformed ancestor becomes a containing block,
+       which would break ScrollTrigger's pin on the schedule inside it. */
+    const g = ease(track(p, 0.24, 0.70));
+    details.style.opacity = g.toFixed(3);
+    details.classList.toggle('visible', g > 0.02);
+  }
+
+  /* Damped follow: the painted value chases the scroll position rather than
+     matching it frame for frame. This is what reads as weight. */
+  function tick(){
+    smooth += (raw - smooth) * 0.11;
+    if (Math.abs(raw - smooth) < 0.0006) smooth = raw;
+    paint(smooth);
+    if (smooth !== raw) requestAnimationFrame(tick);
+    else running = false;
+  }
+
+  const topbar = document.getElementById('topbar');
+
+  function onScroll(){
+    /* the header draws itself in the moment the page moves */
+    if (topbar) topbar.classList.toggle('stuck',
+      (window.scrollY || document.documentElement.scrollTop || 0) > 18);
+    const span = window.innerHeight * 0.5;   // full arc inside half a screen
+    raw = clamp((window.scrollY || document.documentElement.scrollTop || 0) / span, 0, 1);
+    if (reduced){ smooth = raw; paint(raw); return; }
+    if (!running){ running = true; requestAnimationFrame(tick); }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+
+  paint(0);
+  onScroll();
+}
+
+/* Toggling classes on the live nodes — rather than re-rendering the footers —
+   is what lets the CSS transitions actually run. Re-rendering was why the
+   metrics used to appear all at once. */
+function setMetricsRevealed(on){
+  metricsRevealed = on;
+  const foots = document.getElementById('foots');
+  if (!foots) return;
+  foots.querySelectorAll('.value-group')
+       .forEach(el => el.classList.toggle('rise', on));
+  foots.querySelectorAll('.metrics-wrapper')
+       .forEach(el => el.classList.toggle('revealed', on));
+}
+
+/* ============================================================
+   9. LOAD
+   ============================================================ */
+function setNotice(html){
+  const n = document.getElementById('notice');
+  if (!html){ n.classList.remove('show'); return; }
+  n.innerHTML = html; n.classList.add('show');
+}
+addEventListener('error', e => setNotice('<b>Script error.</b> '+esc(e.message)+' (line '+e.lineno+')'));
+addEventListener('unhandledrejection', e =>
+  setNotice('<b>Unhandled failure.</b> '+esc((e.reason&&e.reason.message)||e.reason)));
+
+function stamp(when){
+  document.getElementById('stamp').textContent =
+    (demoMode ? 'Demo data · ' : '') + 'Updated ' +
+    when.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}) +
+    ' · ' + ROWS.length.toLocaleString() + ' line items' +
+    ' · refreshes every ' + Math.round(REFRESH_MS/60000) + ' minutes' +
+    (REP_FIELD ? ' · rep field: ' + REP_FIELD : '');
+}
+
+/* On a wall display nobody reloads the page, so it reloads itself. The scroll
+   position is held across the refresh, and a hidden tab is left alone. */
+const REFRESH_MS = 10 * 60 * 1000;
+let lastLoad = 0;
+
+async function autoRefresh(){
+  if (document.hidden) return;
+  const y = window.scrollY || document.documentElement.scrollTop || 0;
+  await load(true);
+  if (HAS_GSAP) ScrollTrigger.refresh();
+  const put = () => {
+    if (window.lenis) lenis.scrollTo(y, {immediate:true});
+    else scrollTo(0, y);
+  };
+  put();
+  requestAnimationFrame(put);
+}
+
+/* The first render creates the pinned timeline, which changes the document
+   height — enough for the browser (or Lenis) to land somewhere other than the
+   top. Put it back once the page has settled. */
+let firstPaint = true;
+function toTopOnce(){
+  if (!firstPaint) return;
+  firstPaint = false;
+  const top = () => {
+    if (window.lenis) lenis.scrollTo(0, {immediate:true});
+    else scrollTo(0, 0);
+  };
+  top();
+  requestAnimationFrame(top);
+  setTimeout(top, 120);
+  setTimeout(top, 420);
+}
+
+async function load(force){
+  if (!force && memCache && Date.now()-memCache.at < CACHE_TTL){
+    ROWS = memCache.rows; demoMode = false; render(); stamp(new Date(memCache.at));
+  } else if (!ROWS.length){
+    renderSkeleton();
+  }
+  DIAG = [];
+  try{
+    const [a,b] = await Promise.all([
+      fetchTenant('FS2025').then(o=>normalize(o,'FS2025')),
+      fetchTenant('FS2450').then(o=>normalize(o,'FS2450'))
+    ]);
+    const seen = new Set(), merged = [];
+    for (const r of a.concat(b)) if (!seen.has(r.uid)){ seen.add(r.uid); merged.push(r); }
+    if (!merged.length) throw new Error('API responded but returned 0 usable line items');
+    ROWS = merged; demoMode = false; memCache = {at:Date.now(), rows:merged};
+    setNotice(''); render(); stamp(new Date()); toTopOnce();
+    trendSave(ROWS); renderTrend();
+    lastLoad = Date.now();
+  }catch(err){
+    const trace = DIAG.length ? '<br><span style="opacity:.7">'+DIAG.map(esc).join('<br>')+'</span>' : '';
+    if (!ROWS.length){ demoMode = true; ROWS = demoRows(); }
+    setNotice('<b>Showing demo data — the API call did not complete.</b> '+esc(err.message)+
+      '<br>If this is running inside a preview pane, that sandbox blocks requests to corebridge.net. '+
+      'Open the file directly instead.'+trace);
+    render(); stamp(new Date()); toTopOnce();
+  }
+}
+
+/* Re-rendering rebuilds the pinned timeline, which briefly removes its spacer
+   and lets the browser clamp the scroll. Hold the position across it. */
+function renderKeepingPlace(){
+  const y = window.scrollY || document.documentElement.scrollTop || 0;
+  render();
+  if (HAS_GSAP) ScrollTrigger.refresh();
+  const put = () => {
+    if (window.lenis) lenis.scrollTo(y, {immediate:true});
+    else window.scrollTo(0, y);
+  };
+  put();
+  requestAnimationFrame(put);
+}
+
+/* The header wears the identifier colour of whatever is selected — a centre's
+   own, red for Valley, navy for South Bay, ink for everything. */
+function paintTopbar(){
+  const bar = document.getElementById('topbar');
+  if (!bar) return;
+  const L = state.lens;
+  let c = null;
+  if (L === 'valley')        c = getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+  else if (L === 'southbay') c = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim();
+  else if (COLOR_OF[L])      c = COLOR_OF[L];
+  /* deepened so paper text still reads on the lighter identifiers */
+  bar.style.setProperty('--topbar-bg', c ? darken(c, 0.26) : '');
+}
+
+function paintFilters(){
+  paintTopbar();
+  document.querySelectorAll('.district-seg button').forEach(x =>
+    x.setAttribute('aria-pressed', String(x.dataset.f === state.lens)));
+  document.querySelectorAll('.centers button').forEach(x =>
+    x.setAttribute('aria-pressed', String(x.dataset.c === state.lens)));
+  document.querySelectorAll('#scopeMenu button').forEach(x =>
+    x.setAttribute('aria-pressed', String(x.dataset.d === state.due)));
+}
+
+function buildCenterFilter(){
+  const html = `<button data-c="centers" aria-pressed="false">
+      <i style="background:${RIBBON.centers.to}"></i>All Centres</button>` +
+    CENTERS.map(c => `<button data-c="${esc(c.name)}" aria-pressed="false">
+      <i style="background:${c.color}"></i>${esc(c.name)}</button>`).join('');
+  /* the hero and the schedule header each carry a copy, both driving the
+     same lens — paintFilters keeps them in step */
+  document.querySelectorAll('.centers').forEach(el => {
+    el.innerHTML = html;
+    el.querySelectorAll('button').forEach(b =>
+      b.addEventListener('click', () => {
+        state.lens = b.dataset.c; paintFilters(); renderKeepingPlace();
+      }));
+  });
+}
+
+document.querySelectorAll('.district-seg button').forEach(b =>
+  b.addEventListener('click', () => {
+    state.lens = b.dataset.f; paintFilters(); renderKeepingPlace();
+  }));
+
+/* The one scope, for every chart on the page */
+(function wireScope(){
+  const btn  = document.getElementById('scopeToggle');
+  const menu = document.getElementById('scopeMenu');
+  if (!btn || !menu) return;
+
+  const setOpen = on => {
+    menu.classList.toggle('open', on);
+    btn.setAttribute('aria-expanded', String(on));
+  };
+
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    setOpen(!menu.classList.contains('open'));
+  });
+  menu.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    state.due = b.dataset.d;
+    paintFilters();
+    setOpen(false);
+    renderKeepingPlace();
+  });
+  /* anywhere else closes it */
+  document.addEventListener('click', e => {
+    if (!menu.contains(e.target) && e.target !== btn) setOpen(false);
+  });
+  addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
+})();
+
+buildCenterFilter();
+wireGantt();
+wireGanttPan();
+wireSections();
+wireRowExpand();
+wireClientExpand();
+wireHoverCard();
+initSmoothScroll();
+
+/* keep it current on a wall display */
+setInterval(autoRefresh, REFRESH_MS);
+document.addEventListener('visibilitychange', () => {
+  /* a screen that was asleep or a tab that was hidden catches up on return */
+  if (!document.hidden && lastLoad && Date.now() - lastLoad > REFRESH_MS) autoRefresh();
+});
+renderCenterLegend();
+
+let rt;
+addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render,160); });
+
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+scrollTo(0, 0);
+addEventListener('load', () => scrollTo(0, 0));
+
+renderSkeleton();
+renderTrend();
+setupScroll();
+
+/* Redraw the ribbon the instant its box changes — window resize, metrics
+   reveal, anything that reflows the band — without waiting on the debounce. */
+if (typeof ResizeObserver === 'function'){
+  const fw = document.getElementById('flowWrap');
+  let lastBox = '';
+  new ResizeObserver(() => {
+    if (!shown) return;
+    const key = Math.round(fw.clientWidth) + 'x' + Math.round(fw.clientHeight);
+    if (key === lastBox) return;
+    lastBox = key;
+    drawFlow(shown);
+  }).observe(fw);
+}
+
+load(false);
+</script>
+</body>
+</html>
