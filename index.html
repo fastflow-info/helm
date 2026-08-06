@@ -493,6 +493,131 @@ h1 em{font-style:normal;font-weight:600}
   text-wrap:balance;
 }
 
+/* ===== KEY METRICS — "The Numbers" =====
+   The final panel fills the whole viewport and reveals as it scrolls into
+   view, the way Stage Analytics does — a slide arriving, not a scroll. */
+.metrics-panel{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding-top:44px;
+  padding-bottom:56px;
+  opacity:0;
+  transform:translateY(28px);
+  transition:opacity .9s var(--ease-premium), transform .9s var(--ease-premium);
+}
+.metrics-panel.in-view{opacity:1;transform:none}
+.metrics-panel .km-stage{height:calc(100vh - 210px)}
+
+/* ===== KEY METRICS — "The Numbers" ===== */
+.km-stage{
+  position: relative;
+  width: 100%;
+  height: calc(100vh - var(--topbar) - 150px);  /* one screen, below the header and title */
+  min-height: 460px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+/* the pipeline thread, drawn behind everything */
+.km-thread{
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; z-index:0;
+}
+.km-thread path{
+  fill:none; stroke:var(--ink);
+  stroke-width:1; stroke-linecap:round;
+  opacity:0.10;
+  stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
+  animation: km-draw 2.2s var(--ease-premium) 0.5s forwards;
+}
+.km-stage:hover .km-thread path{ opacity:0.20; transition:opacity .5s ease; }
+@keyframes km-draw{ to { stroke-dashoffset: 0; } }
+.km-stat{
+  position: absolute;
+  border-radius: 50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1;
+  box-shadow: 0 14px 36px -12px rgba(14,15,19,0.28);
+  /* settle in from just below, then breathe forever after */
+  transform: translate(-50%, -50%) translateY(26px) scale(0.94);
+  opacity:0;
+  animation:
+    km-rise 1.15s var(--ease-premium) var(--delay,0s) forwards,
+    km-float var(--breath,7s) ease-in-out var(--floatdelay,0s) infinite;
+  transition: left 0.7s var(--ease-premium), top 0.7s var(--ease-premium),
+              width 0.7s var(--ease-premium), height 0.7s var(--ease-premium),
+              box-shadow 0.5s ease, filter 0.5s ease;
+}
+@keyframes km-rise{
+  to { transform: translate(-50%, -50%) translateY(0) scale(1); opacity:1; }
+}
+/* the resting breath — a couple of pixels, each on its own clock */
+@keyframes km-float{
+  0%,100% { margin-top:0 }
+  50%     { margin-top:var(--drift,-4px) }
+}
+/* 6. presence — bring one forward, let the rest recede a touch */
+.km-stage:hover .km-stat{ filter:saturate(0.82) brightness(1.02); }
+.km-stat:hover{
+  filter:none !important;
+  box-shadow: 0 26px 60px -16px rgba(14,15,19,0.42);
+  z-index:3;
+}
+.km-num-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+}
+.km-num{
+  font-weight:300;
+  color: #fff;
+  letter-spacing:-0.01em;
+  line-height:1;
+  white-space:nowrap;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.28);
+}
+.km-num-sub{
+  font-weight:500;
+  color: rgba(255,255,255,0.62);
+  line-height:1;
+  white-space:nowrap;
+  letter-spacing:.02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.22);
+  opacity:0;
+  transition:opacity .4s ease;
+}
+/* the item count is there when you look, quiet when you don't */
+.km-stat:hover .km-num-sub{ opacity:1; }
+.km-num-wrap{ transition:transform .5s var(--ease-premium); }
+.km-stat:hover .km-num-wrap{ transform:translateY(-1px); }
+.km-caption{
+  position:absolute;
+  transform: translate(-50%, 0);
+  text-align:center;
+  font-size:12.5px;
+  font-weight:700;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  line-height:1.4;
+  color: #0E0F13;
+  max-width: 132px;
+  transition: left 0.6s var(--ease-premium), top 0.6s var(--ease-premium);
+}
+.km-caption-sub{
+  display:block;
+  margin-top:3px;
+  color: var(--ink);
+  font-size:10.5px;
+  font-weight:600;
+  letter-spacing:.06em;
+}
+
+
 .matrix{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
 .matrix .mc{
   background:var(--paper);
@@ -1667,6 +1792,14 @@ a.num:hover{color:var(--red)}
         <span><i style="background:linear-gradient(180deg,#DA2128,#9E1219)"></i>Overdue portion</span>
       </div>
     </section>
+
+    <!-- KEY METRICS -->
+    <section class="board metrics-panel" id="metricsSec">
+      <div class="panel-header"><div class="sec-title"><div class="eyebrow">Key Metrics</div><h2>The Numbers</h2></div>
+        <span class="board-sub">Where open value concentrates by stage, for whichever centre or district is currently selected above.</span></div>
+      <div class="km-stage" id="keyMetricsStage"></div>
+    </section>
+
     <div class="unmapped" id="unmapped"></div>
     <div class="stamp" id="stamp">Loading</div>
   </div>
@@ -2028,6 +2161,9 @@ const RIBBON = {
 
 const darken = (hex, k) => '#' + [1,3,5]
   .map(i => Math.round(parseInt(hex.slice(i,i+2),16) * (1-k)).toString(16).padStart(2,'0'))
+  .join('');
+const lighten = (hex, k) => '#' + [1,3,5]
+  .map(i => Math.round(parseInt(hex.slice(i,i+2),16) + (255-parseInt(hex.slice(i,i+2),16)) * k).toString(16).padStart(2,'0'))
   .join('');
 
 function lensColors(){
@@ -3623,6 +3759,193 @@ function renderCentreBoard(rows){
   })));
 }
 
+function hexA(hex, a){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* Same colour logic the ribbon uses for its "up/down" halves — one colour
+   per scope, so switching centre/district in the header recolours the
+   circles the same way it recolours everything else. */
+function scopeColor(){
+  const L = state.lens;
+  if (L === 'districts') return RIBBON.centers.to;
+  if (L === 'valley')    return RIBBON.valley.to;
+  if (L === 'southbay')  return RIBBON.southbay.to;
+  if (L === 'centers')   return RIBBON.centers.to;
+  return COLOR_OF[L] || RIBBON.centers.to;
+}
+
+/* All ten stages, sized by open value, coloured to the current scope,
+   zig-zagged across two rows so a big neighbour never sits directly next
+   to another big one. Same S the rest of the boards use, so it already
+   reflects whatever centre/district/due filter the header is set to. */
+function renderKeyMetrics(S){
+  const el = document.getElementById('keyMetricsStage');
+  if (!el) return;
+
+  if (document.body.classList.contains('loading')){
+    el.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--ink-faint);font-size:12px;">Loading stage data…</div>';
+    return;
+  }
+  if (!S.length || S.every(s => s.value === 0 && s.count === 0)){
+    el.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--ink-faint);font-size:12px;">No open value in this scope.</div>';
+    return;
+  }
+
+  const grand = S.reduce((a,s) => a+s.value, 0);
+  const maxV  = Math.max(...S.map(s => s.value), 1);
+  const pctOf = v => grand > 0 ? (v/grand*100) : 0;
+  const fmtPct = v => v>=10 ? Math.round(v)+'%' : v>=1 ? v.toFixed(1)+'%' : v>0 ? v.toFixed(2)+'%' : '0%';
+  const color = scopeColor();
+  const light = lighten(color, 0.14);
+  const dark  = darken(color, 0.16);
+  /* size the largest bubble to the stage it must fit inside, not a fixed max */
+  const box = el.getBoundingClientRect();
+  const cap = Math.max(150, Math.min(240, Math.min(box.width, box.height) * 0.30));
+  const sizeOf = v => 40 + Math.sqrt(v / maxV) * (cap - 40);
+
+  // biggest stage anchors the centre; everyone else orbits it in pipeline
+  // order, starting at 12 o'clock, so the ring still reads left-to-right
+  // as the production flow rather than a shuffled deck.
+  let centreIdx = 0;
+  S.forEach((s,i) => { if (s.value > S[centreIdx].value) centreIdx = i; });
+  const centre = S[centreIdx];
+  const orbit  = S.filter((_,i) => i !== centreIdx);
+
+  const Rx = 33, Ry = 32; // orbit radius as % of the stage box
+  const step = (Math.PI * 2) / orbit.length;
+  /* a small deterministic wobble per stage — same every render, never a
+     reshuffle, just enough to break the perfect clock face */
+  const jitter = seedStr => {
+    let h = 2166136261;
+    for (const c of seedStr){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+    const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) / 4294967296); };
+    return { r: 0.82 + rnd()*0.30, a: (rnd()-0.5)*0.40 };
+  };
+
+  let order = 0;
+  const stat = (s, leftPct, topPct) => {
+    const size = sizeOf(s.value);
+    const moneyFs = Math.max(12, Math.min(34, size/6.6));
+    const countFs = Math.max(9, Math.min(13, size/14));
+    /* deterministic per-stage rhythm so nothing beats in sync */
+    const h = [...s.name].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0, 7);
+    const delay  = (order++ * 0.06).toFixed(2);          // stagger the arrival
+    const breath = (6.5 + (h % 40)/10).toFixed(1);       // 6.5–10.5s
+    const drift  = (-3 - (h % 4)).toFixed(0);            // -3 to -6px
+    const fdelay = ((h % 30)/10).toFixed(1);             // desync the float
+    return `
+      <div class="km-stat" style="left:${leftPct}%; top:${topPct}%; width:${size}px; height:${size}px;
+        --delay:${delay}s; --breath:${breath}s; --drift:${drift}px; --floatdelay:${fdelay}s;
+        background: radial-gradient(circle at 38% 32%, ${light} 0%, ${color} 46%, ${color} 74%, ${dark} 100%);">
+        <div class="km-num-wrap">
+          <div class="km-num" style="font-size:${moneyFs}px;">${esc(money(s.value))}</div>
+          ${size >= 58 ? `<div class="km-num-sub" style="font-size:${countFs}px;">${s.count} ${s.count===1?'item':'items'}</div>` : ''}
+        </div>
+      </div>
+      <div class="km-caption" style="left:${leftPct}%; top:calc(${topPct}% + ${size/2 + 20}px); --delay:${delay}s;">
+        ${esc(s.name)}
+        <span class="km-caption-sub">${fmtPct(pctOf(s.value))} of open${size < 58 ? ` · ${s.count} ${s.count===1?'item':'items'}` : ''}</span>
+      </div>`;
+  };
+
+  /* first place everyone, then nudge apart any two that overlap. a stage is
+     not just its circle — the words underneath belong to it too, so each one
+     is separated as a block: circle on top, caption beneath. that is what was
+     crowding Quality Control, whose caption is wider than the bubble itself. */
+  const capLines = s => Math.max(1, Math.ceil(s.name.length / 13));
+  const capH = s => 20 + capLines(s)*17.5 + 16;        // gap + name lines + the % line
+  const capW = s => Math.min(132, s.name.length*8.5) + 8;   // caption wraps at 132px
+  const blockOf = s => ({ cap: capH(s), w: Math.max(sizeOf(s.value), capW(s)) });
+
+  const placed = [{ s:centre, x:50, y:50, r:sizeOf(centre.value), ...blockOf(centre) }];
+  const pts = orbit.map((s,i) => {
+    const j = jitter(s.name);
+    const angle = -Math.PI/2 + i * step + j.a;
+    return { s, x: 50 + Rx*j.r*Math.cos(angle), y: 50 + Ry*j.r*Math.sin(angle),
+             r: sizeOf(s.value), ...blockOf(s) };
+  });
+
+  /* percent-to-pixel, measured rather than guessed — the stage is far wider
+     than it is tall, so a percent of width is worth more pixels than a
+     percent of height, and the two must not be treated as the same step */
+  const pxX = Math.max(6, (box.width  || 1200) / 100);
+  const pxY = Math.max(4, (box.height || 620)  / 100);
+  const PAD = 16;                                  // breathing room between blocks
+  const boxOf = p => ({ L: p.x*pxX - p.w/2, R: p.x*pxX + p.w/2,
+                        T: p.y*pxY - p.r/2, B: p.y*pxY + p.r/2 + p.cap });
+  const clampX = p => { const h = (p.w/2 + 6)/pxX;
+                        p.x = Math.min(100 - h, Math.max(h, p.x)); };
+  const clampY = p => { const t = (p.r/2 + 6)/pxY, b = (p.r/2 + p.cap + 6)/pxY;
+                        p.y = Math.min(100 - b, Math.max(t, p.y)); };
+
+  pts.forEach(p => {
+    for (let pass=0; pass<80; pass++){
+      let moved = false;
+      for (const q of placed){
+        const a = boxOf(p), b = boxOf(q);
+        const ox = Math.min(a.R,b.R) - Math.max(a.L,b.L) + PAD;
+        const oy = Math.min(a.B,b.B) - Math.max(a.T,b.T) + PAD;
+        if (ox > 0 && oy > 0){
+          /* lift it clear where there is headroom — the top of the stage is
+             open air — and only slide it sideways when there is not */
+          const upFits = (p.y - oy/pxY)*pxY - p.r/2 > 6;
+          if ((p.y <= q.y && upFits) || oy < ox) p.y += (p.y <= q.y ? -oy : oy)/pxY;
+          else                                   p.x += (p.x <= q.x ? -ox : ox)/pxX;
+          moved = true;
+        }
+      }
+      clampX(p); clampY(p);
+      if (!moved) break;
+    }
+    /* if the walls have pinned it and it is still sitting on a neighbour,
+       slide it sideways — there is always room left or right */
+    for (let pass=0; pass<24; pass++){
+      let moved = false;
+      for (const q of placed){
+        const a = boxOf(p), b = boxOf(q);
+        const ox = Math.min(a.R,b.R) - Math.max(a.L,b.L) + PAD;
+        const oy = Math.min(a.B,b.B) - Math.max(a.T,b.T) + PAD;
+        if (ox > 0 && oy > 0){ p.x += (p.x <= q.x ? -ox : ox)/pxX; moved = true; }
+      }
+      clampX(p);
+      if (!moved) break;
+    }
+    placed.push(p);
+  });
+
+  /* the pipeline thread: connect the stages in production order. rebuild the
+     full sequence with each stage's placed x/y, centre included. */
+  const coord = {};
+  coord[centre.name] = { x:50, y:50 };
+  pts.forEach(p => { coord[p.s.name] = { x:p.x, y:p.y }; });
+  const seq = S.map(s => coord[s.name]).filter(Boolean);
+
+  /* a smooth catmull-rom-ish curve through the points, in % space */
+  let d = '';
+  if (seq.length > 1){
+    d = `M ${seq[0].x} ${seq[0].y}`;
+    for (let i=0; i<seq.length-1; i++){
+      const p0 = seq[i-1] || seq[i], p1 = seq[i], p2 = seq[i+1], p3 = seq[i+2] || p2;
+      const c1x = p1.x + (p2.x-p0.x)/6, c1y = p1.y + (p2.y-p0.y)/6;
+      const c2x = p2.x - (p3.x-p1.x)/6, c2y = p2.y - (p3.y-p1.y)/6;
+      d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)} ${c2x.toFixed(2)} ${c2y.toFixed(2)} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+    }
+  }
+
+  const thread = d
+    ? `<svg class="km-thread" viewBox="0 0 100 100" preserveAspectRatio="none">
+         <path d="${d}" style="--len:320" vector-effect="non-scaling-stroke"/>
+       </svg>` : '';
+
+  let html = thread + stat(centre, 50, 50);
+  pts.forEach(p => { html += stat(p.s, p.x, p.y); });
+
+  el.innerHTML = html;
+}
+
 function renderTotals(rows){
   const sum  = a => a.reduce((s,r) => s + r.value, 0);
   const late = rows.filter(r => r.daysLate !== null && r.daysLate > 0);
@@ -3771,6 +4094,7 @@ function renderSkeleton(){
   renderHeads(S);
   renderFlow(S);
   renderFoots(S, false);
+  window.__lastS = S; renderKeyMetrics(S);
   document.getElementById('tOpen').textContent = '—';
   document.getElementById('tLate').textContent = '—';
   document.getElementById('tItems').textContent = '—';
@@ -3811,6 +4135,7 @@ function render(){
   renderRepStage(cr);
   renderRepBoard(cr);
   renderCentreBoard(cr);
+  window.__lastS = S; renderKeyMetrics(S);
   renderGantt(rows);
   renderUnmapped(rows);
 }
@@ -4088,6 +4413,23 @@ initSmoothScroll();
 
 /* keep it current on a wall display */
 setInterval(autoRefresh, REFRESH_MS);
+
+/* the final panel reveals — and sizes its bubbles — only once it is on screen */
+(function(){
+  const panel = document.getElementById('metricsSec');
+  if (!panel || !('IntersectionObserver' in window)) { if(panel) panel.classList.add('in-view'); return; }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting){
+        panel.classList.add('in-view');
+        /* the bubbles were measured against a zero-height box before reveal;
+           redraw now that the panel has its full height */
+        if (window.__lastS) requestAnimationFrame(() => renderKeyMetrics(window.__lastS));
+      }
+    });
+  }, { threshold: 0.15 });
+  io.observe(panel);
+})();
 document.addEventListener('visibilitychange', () => {
   /* a screen that was asleep or a tab that was hidden catches up on return */
   if (!document.hidden && lastLoad && Date.now() - lastLoad > REFRESH_MS) autoRefresh();
