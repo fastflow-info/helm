@@ -369,6 +369,24 @@ h1 em{font-style:normal;font-weight:600}
   width:100%;
   height:100%;
 }
+/* ===== DISTRICT MARKS ON THE RIBBON =====
+   Only when both districts are on screen: the word sits at the right edge,
+   halfway up its own half of the band, so you know which side is whose
+   without a legend. Set in the ribbon's own colours, quietly. */
+.flow-mark{
+  position:absolute;
+  right:0;
+  transform:translateY(-50%);
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  pointer-events:none;
+  opacity:0.72;
+}
+.flow-mark.up{color:var(--red-deep)}
+.flow-mark.dn{color:var(--blue-deep)}
 
 /* ===== STAGE FOOT — VALUES + METRICS AT BOTTOM ===== */
 .foots-wrap{
@@ -597,7 +615,8 @@ h1 em{font-style:normal;font-weight:600}
 .km-stat:hover .km-num-wrap{ transform:translateY(-1px); }
 .km-caption{
   position:absolute;
-  transform: translate(-50%, 0);
+  /* the words sit above the bubble now, so the block grows upward */
+  transform: translate(-50%, -100%);
   text-align:center;
   font-size:12.5px;
   font-weight:700;
@@ -610,7 +629,8 @@ h1 em{font-style:normal;font-weight:600}
 }
 .km-caption-sub{
   display:block;
-  margin-top:3px;
+  margin-top:2px;
+  margin-bottom:2px;
   color: var(--ink);
   font-size:10.5px;
   font-weight:600;
@@ -819,21 +839,86 @@ h1 em{font-style:normal;font-weight:600}
 .vbars-legend span{display:flex;align-items:center;gap:7px}
 .vbars-legend i{width:14px;height:6px;border-radius:2px}
 
-/* ===== TREND ===== */
-.trend{margin-top:26px;max-width:74%;margin-left:auto;margin-right:auto}
-.trend svg{width:100%;height:240px;overflow:visible;display:block}
-.trend .grid{stroke:var(--rule-soft);stroke-width:1}
-.trend .axis{stroke:var(--ink);stroke-width:1}
-.trend text{
-  font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:.05em;
-  fill:var(--ink-soft);
+/* ===== TREND — "IS IT GETTING BETTER" =====
+   Read as a panel, not as a band stretched across the whole page: the words
+   pick the series, the figure is where it stands today, the line is its shape
+   across the days recorded. Nothing is filled — the paper stays paper.
+   Text and dots live in HTML rather than in the SVG — the plot is drawn with
+   preserveAspectRatio="none", which would stretch both out of shape. */
+.trend{margin-top:24px;max-width:820px}
+
+.tr-toggle{display:flex;gap:6px;margin-left:-13px}
+.tr-toggle button{
+  position:relative;border:0;border-radius:0;background:transparent;cursor:pointer;
+  padding:7px 13px 9px;
+  font-family:var(--sans);font-size:10px;font-weight:600;
+  letter-spacing:.2em;text-transform:uppercase;
+  color:var(--ink-faint);
+  transition:color .45s var(--ease-premium);
 }
-.trend text.y{text-anchor:end}
-.trend text.x{text-anchor:middle}
-.trend .lineOpen{fill:none;stroke:var(--blue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-.trend .lineLate{fill:none;stroke:var(--red);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-.trend .dot{fill:var(--paper);stroke-width:2}
-.trend .areaOpen{fill:var(--blue);opacity:.07}
+.tr-toggle button .amt{
+  margin-left:9px;font-size:11px;font-weight:500;letter-spacing:.04em;
+  font-variant-numeric:tabular-nums;opacity:.8;
+}
+.tr-toggle button::after{
+  content:'';position:absolute;left:13px;right:13px;bottom:2px;height:1.5px;
+  background:currentColor;opacity:0;transform:scaleX(.4);transform-origin:center;
+  transition:opacity .35s var(--ease-premium), transform .45s var(--ease-premium);
+}
+.tr-toggle button:hover{color:var(--ink-soft)}
+.tr-toggle button.on{color:var(--ink)}
+.tr-toggle button.on.k-open{color:var(--blue)}
+.tr-toggle button.on.k-late{color:var(--red)}
+.tr-toggle button.on::after{opacity:1;transform:scaleX(1)}
+
+.tr-figure{display:flex;align-items:baseline;gap:14px;margin-top:14px;flex-wrap:wrap}
+.tr-figure .fig{
+  font-size:42px;font-weight:200;line-height:1;letter-spacing:-.02em;
+  color:var(--ink);font-variant-numeric:tabular-nums;
+}
+.tr-figure .delta{
+  font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-soft);white-space:nowrap;
+}
+.tr-figure .delta.worse{color:var(--red-deep)}
+.tr-figure .delta .since{color:var(--ink-faint);font-weight:500;letter-spacing:.07em}
+
+.tr-plot{position:relative;height:190px;margin-top:26px;cursor:crosshair}
+.tr-plot svg{width:100%;height:100%;display:block;overflow:visible}
+.tr-hair{stroke:var(--ink);stroke-width:1;stroke-dasharray:2 4;opacity:.28}
+.tr-line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.tr-line.rest{opacity:.28;stroke-width:1.5}
+
+.tr-dot,.tr-mark{
+  position:absolute;border-radius:50%;background:var(--paper);
+  box-sizing:border-box;pointer-events:none;
+}
+.tr-dot{width:6px;height:6px;margin:-3px 0 0 -3px;border:1.5px solid}
+.tr-dot.rest{opacity:.4}
+.tr-mark{
+  width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border:2.5px solid;
+  transition:left .28s var(--ease-premium), top .28s var(--ease-premium);
+}
+.tr-pill{
+  position:absolute;transform:translate(-50%,-100%);margin-top:-14px;
+  background:var(--ink);color:var(--paper);
+  padding:5px 9px;white-space:nowrap;pointer-events:none;
+  font-size:11.5px;font-weight:400;letter-spacing:.02em;
+  font-variant-numeric:tabular-nums;
+  transition:left .28s var(--ease-premium), top .28s var(--ease-premium);
+}
+.tr-pill .sub{
+  margin-left:8px;opacity:.58;
+  font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+}
+.tr-axis{position:relative;height:18px;margin-top:12px}
+.tr-axis span{
+  position:absolute;transform:translateX(-50%);
+  font-size:9.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-faint);white-space:nowrap;
+}
+.tr-axis span.now{color:var(--ink)}
+
 .trend-empty{
   padding:40px 0;text-align:center;
   font-size:11.5px;font-weight:500;letter-spacing:.06em;color:var(--ink-soft);
@@ -1763,10 +1848,6 @@ a.num:hover{color:var(--red)}
       <div class="panel-header"><div class="sec-title"><h2>Is It Getting Better</h2></div>
         <span class="board-sub" id="trendSub">The only view here that is not a snapshot. Two lines over time, so you can tell whether what you changed last week actually worked.</span></div>
       <div class="trend" id="trend"></div>
-      <div class="vbars-legend">
-        <span><i style="background:#1A4C7E"></i>Open</span>
-        <span><i style="background:#DA2128"></i>Overdue</span>
-      </div>
     </section>
 
     <!-- REP SCORECARD -->
@@ -2276,7 +2357,16 @@ function drawFlow(g){
     <path d="${areaPath(i => cy, i => cy + LD[i])}" fill="url(#gDn)"/>
     <line x1="0" y1="${cy}" x2="${W}" y2="${cy}" stroke="#FDFCFA" stroke-width="0.5" opacity="0.85"/>
   </svg>`;
-  document.getElementById('flowWrap').innerHTML = svg;
+
+  /* the two district names, in HTML rather than in the SVG — the ribbon is
+     drawn with preserveAspectRatio="none", which would stretch any text
+     inside it out of shape. Placed halfway up each half of the band. */
+  const marks = state.lens === 'districts'
+    ? `<div class="flow-mark up" style="top:${((cy - half/2)/H*100).toFixed(2)}%">Valley</div>
+       <div class="flow-mark dn" style="top:${((cy + half/2)/H*100).toFixed(2)}%">South Bay</div>`
+    : '';
+
+  document.getElementById('flowWrap').innerHTML = svg + marks;
 }
 
 function renderFlow(S){
@@ -3678,8 +3768,11 @@ function trendSave(rows){
   } catch(_){ /* storage unavailable — the view simply stays empty */ }
 }
 
+/* which of the two series leads the view — the other stays, drawn thin */
+let trendLead = 'open';
+
 function renderTrend(){
-  const el = document.getElementById('trend');
+  const el  = document.getElementById('trend');
   const sub = document.getElementById('trendSub');
   if (!el) return;
   const log = trendRead();
@@ -3691,41 +3784,111 @@ function renderTrend(){
   }
   if (sub) sub.textContent = `${log.length} days recorded`;
 
-  const W = 1000, H = 240, L = 62, R = 8, T = 16, B = 28;
-  const top = niceMax(Math.max(...log.map(e => e.open)));
-  const x = i => L + (i / (log.length - 1)) * (W - L - R);
-  const y = v => T + (1 - v/top) * (H - T - B);
+  const lead = trendLead, rest = lead === 'open' ? 'late' : 'open';
+  const COL  = { open:'var(--blue)', late:'var(--red)' };
+  const NAME = { open:'Open', late:'Overdue' };
+  const day  = d => new Date(d+'T00:00:00').toLocaleDateString([], {month:'short', day:'numeric'});
 
-  let grid = '', ticks = 4;
-  for (let t = 0; t <= ticks; t++){
-    const v = top * t / ticks, yy = y(v);
-    grid += `<line class="grid" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/>` +
-            `<text class="y" x="${L-10}" y="${yy+3.5}">${esc(money(v))}</text>`;
-  }
+  const W=1000, H=190, L=22, R=22, T=30, B=18;
+  /* the window is fitted to the days on screen rather than anchored at zero:
+     day-to-day movement is the whole question here, and against a zero floor
+     a $9K move on $475K is a flat line. The figures themselves — the headline
+     and the pill — always carry the real number. */
+  const vals = log.flatMap(e => [e.open||0, e.late||0]);
+  const lo0 = Math.min(...vals), hi0 = Math.max(...vals);
+  const span = Math.max(1, hi0 - lo0);
+  const hi = hi0 + span*0.30, lo = Math.max(0, lo0 - span*0.30);
+  const x = i => L + (i/(log.length-1))*(W-L-R);
+  const y = v => T + (1 - ((v||0)-lo)/(hi-lo))*(H-T-B);
+  const pctX = i => (x(i)/W*100).toFixed(3);
+  const pctY = v => (y(v)/H*100).toFixed(3);
 
-  const path = key => log.map((e,i) => `${i?'L':'M'}${x(i).toFixed(1)},${y(e[key]).toFixed(1)}`).join(' ');
-  const area = `M${x(0).toFixed(1)},${y(0).toFixed(1)} ` +
-    log.map((e,i) => `L${x(i).toFixed(1)},${y(e.open).toFixed(1)}`).join(' ') +
-    ` L${x(log.length-1).toFixed(1)},${y(0).toFixed(1)} Z`;
+  /* a smooth line through the days rather than a zig-zag between them */
+  const curve = key => {
+    const p = log.map((e,i) => ({x:x(i), y:y(e[key])}));
+    let d = `M ${p[0].x.toFixed(1)} ${p[0].y.toFixed(1)}`;
+    for (let i=0;i<p.length-1;i++){
+      const p0=p[i-1]||p[i], p1=p[i], p2=p[i+1], p3=p[i+2]||p2;
+      d += ` C ${(p1.x+(p2.x-p0.x)/6).toFixed(1)} ${(p1.y+(p2.y-p0.y)/6).toFixed(1)}`
+        +  ` ${(p2.x-(p3.x-p1.x)/6).toFixed(1)} ${(p2.y-(p3.y-p1.y)/6).toFixed(1)}`
+        +  ` ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+    }
+    return d;
+  };
+  const floor = y(lo);   // where the pointer's hairline stops
 
-  const dots = log.map((e,i) =>
-    `<circle class="dot" style="stroke:var(--blue)" cx="${x(i).toFixed(1)}" cy="${y(e.open).toFixed(1)}" r="3"/>` +
-    `<circle class="dot" style="stroke:var(--red)" cx="${x(i).toFixed(1)}" cy="${y(e.late).toFixed(1)}" r="3"/>`).join('');
+  /* the move since yesterday. rising overdue is the only one of the four
+     directions that is plainly bad, so it is the only one that goes red. */
+  const last = log[log.length-1], prev = log[log.length-2];
+  const dv    = (last[lead]||0) - (prev[lead]||0);
+  const pct   = prev[lead] ? Math.abs(dv/prev[lead]*100) : 0;
+  const worse = lead === 'late' && dv > 0;
+  const arrow = dv > 0 ? '\u2191' : dv < 0 ? '\u2193' : '\u00b7';
 
-  const every = Math.ceil(log.length / 8);
-  const xlab = log.map((e,i) => (i % every === 0 || i === log.length-1)
-    ? `<text class="x" x="${x(i).toFixed(1)}" y="${H-8}">${new Date(e.d+'T00:00:00')
-        .toLocaleDateString([], {month:'short', day:'numeric'})}</text>` : '').join('');
+  const dots = key => log.map((e,i) =>
+    `<i class="tr-dot${key===lead?'':' rest'}" style="left:${pctX(i)}%; top:${pctY(e[key])}%;
+        border-color:${COL[key]};"></i>`).join('');
 
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-    ${grid}
-    <path class="areaOpen" d="${area}"/>
-    <path class="lineOpen" d="${path('open')}"/>
-    <path class="lineLate" d="${path('late')}"/>
-    ${dots}
-    <line class="axis" x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}"/>
-    ${xlab}
-  </svg>`;
+  const every = Math.ceil(log.length/8);
+  const axis = log.map((e,i) => (i%every===0 || i===log.length-1)
+    ? `<span class="${i===log.length-1?'now':''}" style="left:${pctX(i)}%">${esc(day(e.d))}</span>` : '').join('');
+
+  const btn = k => `<button data-k="${k}" class="k-${k}${k===lead?' on':''}">${NAME[k]}
+      <span class="amt">${esc(money(last[k]||0))}</span></button>`;
+
+  el.innerHTML = `
+    <div class="tr-toggle">${btn('open')}${btn('late')}</div>
+    <div class="tr-figure">
+      <div class="fig">${esc(money(last[lead]||0))}</div>
+      <div class="delta${worse?' worse':''}">
+        ${arrow} ${esc(money(Math.abs(dv)))} \u00b7 ${pct.toFixed(pct>=10?0:1)}%
+        <span class="since">since ${esc(day(prev.d))}</span>
+      </div>
+    </div>
+    <div class="tr-plot" id="trPlot">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+        aria-label="${esc(NAME[lead])} value over the days recorded">
+        <line class="tr-hair" id="trHair" x1="0" x2="0" y1="6" y2="${floor.toFixed(1)}"
+          vector-effect="non-scaling-stroke"/>
+        <path class="tr-line rest" style="stroke:${COL[rest]}" d="${curve(rest)}"
+          vector-effect="non-scaling-stroke"/>
+        <path class="tr-line lead" style="stroke:${COL[lead]}" d="${curve(lead)}"
+          vector-effect="non-scaling-stroke"/>
+      </svg>
+      ${dots(rest)}${dots(lead)}
+      <i class="tr-mark" id="trMark" style="border-color:${COL[lead]}"></i>
+      <div class="tr-pill" id="trPill"></div>
+    </div>
+    <div class="tr-axis">${axis}</div>`;
+
+  /* the pill follows the pointer along the days, and settles back on today */
+  const plot = document.getElementById('trPlot');
+  const pill = document.getElementById('trPill');
+  const hair = document.getElementById('trHair');
+  const mark = document.getElementById('trMark');
+
+  const paint = i => {
+    const e = log[i], vx = pctX(i), vy = pctY(e[lead]);
+    pill.style.left = vx + '%'; pill.style.top = vy + '%';
+    pill.innerHTML = `${esc(money(e[lead]||0))}<span class="sub">${esc(day(e.d))}</span>`;
+    mark.style.left = vx + '%'; mark.style.top = vy + '%';
+    hair.setAttribute('x1', x(i).toFixed(1));
+    hair.setAttribute('x2', x(i).toFixed(1));
+    hair.setAttribute('y2', y(e[lead]).toFixed(1));
+  };
+  paint(log.length - 1);
+
+  plot.onmousemove = ev => {
+    const r = plot.getBoundingClientRect();
+    if (!r.width) return;
+    const t = ((ev.clientX - r.left)/r.width*W - L) / (W - L - R);
+    paint(Math.max(0, Math.min(log.length-1, Math.round(t*(log.length-1)))));
+  };
+  plot.onmouseleave = () => paint(log.length - 1);
+
+  el.querySelectorAll('.tr-toggle button').forEach(b => {
+    b.onclick = () => { trendLead = b.dataset.k; renderTrend(); };
+  });
 }
 
 function renderRepBoard(rows){
@@ -3825,11 +3988,14 @@ function renderKeyMetrics(S){
     return { r: 0.82 + rnd()*0.30, a: (rnd()-0.5)*0.40 };
   };
 
+  /* the words for a stage: its name, then its share and its item count. the
+     count is no longer something you have to hover to find. */
+  const subOf = s => `${fmtPct(pctOf(s.value))} of open · ${s.count} ${s.count===1?'item':'items'}`;
+
   let order = 0;
   const stat = (s, leftPct, topPct) => {
     const size = sizeOf(s.value);
     const moneyFs = Math.max(12, Math.min(34, size/6.6));
-    const countFs = Math.max(9, Math.min(13, size/14));
     /* deterministic per-stage rhythm so nothing beats in sync */
     const h = [...s.name].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0, 7);
     const delay  = (order++ * 0.06).toFixed(2);          // stagger the arrival
@@ -3842,23 +4008,27 @@ function renderKeyMetrics(S){
         background: radial-gradient(circle at 38% 32%, ${light} 0%, ${color} 46%, ${color} 74%, ${dark} 100%);">
         <div class="km-num-wrap">
           <div class="km-num" style="font-size:${moneyFs}px;">${esc(money(s.value))}</div>
-          ${size >= 58 ? `<div class="km-num-sub" style="font-size:${countFs}px;">${s.count} ${s.count===1?'item':'items'}</div>` : ''}
         </div>
       </div>
-      <div class="km-caption" style="left:${leftPct}%; top:calc(${topPct}% + ${size/2 + 20}px); --delay:${delay}s;">
+      <div class="km-caption" style="left:${leftPct}%; top:calc(${topPct}% - ${size/2 + 14}px); --delay:${delay}s;">
         ${esc(s.name)}
-        <span class="km-caption-sub">${fmtPct(pctOf(s.value))} of open${size < 58 ? ` · ${s.count} ${s.count===1?'item':'items'}` : ''}</span>
+        <span class="km-caption-sub">${esc(subOf(s))}</span>
       </div>`;
   };
 
   /* first place everyone, then nudge apart any two that overlap. a stage is
-     not just its circle — the words underneath belong to it too, so each one
-     is separated as a block: circle on top, caption beneath. that is what was
+     not just its circle — the words above it belong to it too, so each one is
+     separated as a block: caption on top, circle beneath. that is what was
      crowding Quality Control, whose caption is wider than the bubble itself. */
-  const capLines = s => Math.max(1, Math.ceil(s.name.length / 13));
-  const capH = s => 20 + capLines(s)*17.5 + 16;        // gap + name lines + the % line
-  const capW = s => Math.min(132, s.name.length*8.5) + 8;   // caption wraps at 132px
-  const blockOf = s => ({ cap: capH(s), w: Math.max(sizeOf(s.value), capW(s)) });
+  const CAP_W = 132;                                   // .km-caption max-width
+  const blockOf = s => {
+    const sub = subOf(s);
+    const nameLines = Math.max(1, Math.ceil(s.name.length*8.2 / CAP_W));
+    const subLines  = Math.max(1, Math.ceil(sub.length*6.6  / CAP_W));
+    const textW = Math.min(CAP_W, Math.max(s.name.length*8.2, sub.length*6.6));
+    return { cap: 14 + nameLines*17.5 + subLines*15 + 6,   // gap + name + the share line
+             w: Math.max(sizeOf(s.value), textW + 8) };
+  };
 
   const placed = [{ s:centre, x:50, y:50, r:sizeOf(centre.value), ...blockOf(centre) }];
   const pts = orbit.map((s,i) => {
@@ -3875,10 +4045,10 @@ function renderKeyMetrics(S){
   const pxY = Math.max(4, (box.height || 620)  / 100);
   const PAD = 16;                                  // breathing room between blocks
   const boxOf = p => ({ L: p.x*pxX - p.w/2, R: p.x*pxX + p.w/2,
-                        T: p.y*pxY - p.r/2, B: p.y*pxY + p.r/2 + p.cap });
+                        T: p.y*pxY - p.r/2 - p.cap, B: p.y*pxY + p.r/2 });
   const clampX = p => { const h = (p.w/2 + 6)/pxX;
                         p.x = Math.min(100 - h, Math.max(h, p.x)); };
-  const clampY = p => { const t = (p.r/2 + 6)/pxY, b = (p.r/2 + p.cap + 6)/pxY;
+  const clampY = p => { const t = (p.r/2 + p.cap + 6)/pxY, b = (p.r/2 + 6)/pxY;
                         p.y = Math.min(100 - b, Math.max(t, p.y)); };
 
   pts.forEach(p => {
@@ -3891,7 +4061,7 @@ function renderKeyMetrics(S){
         if (ox > 0 && oy > 0){
           /* lift it clear where there is headroom — the top of the stage is
              open air — and only slide it sideways when there is not */
-          const upFits = (p.y - oy/pxY)*pxY - p.r/2 > 6;
+          const upFits = (p.y - oy/pxY)*pxY - p.r/2 - p.cap > 6;
           if ((p.y <= q.y && upFits) || oy < ox) p.y += (p.y <= q.y ? -oy : oy)/pxY;
           else                                   p.x += (p.x <= q.x ? -ox : ox)/pxX;
           moved = true;
