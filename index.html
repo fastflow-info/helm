@@ -262,8 +262,19 @@ h1 em{font-style:normal;font-weight:600}
 .centers button[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
 .centers button[aria-pressed="true"] i{opacity:1}
 
-.totals{display:flex;gap:26px;align-items:flex-start}
-.tot{text-align:right}
+/* Even columns rather than even gaps: sized to their content, "$485K" and
+   "180" left wildly different amounts of air between them. Each figure now
+   gets the same width, so the rhythm is regular whatever the numbers do.
+   Each block stays right-aligned — its three lines share an edge, and the
+   strip ends on the page margin in line with everything below it. */
+.totals{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(72px,1fr);
+  align-items:start;
+  min-width:min(560px, 100%);
+}
+.tot{text-align:right;padding:0 0 0 26px}
 .tot .v{font-size:26px;font-weight:400;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.005em}
 .tot .k{
   font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
@@ -1094,7 +1105,7 @@ h1 em{font-style:normal;font-weight:600}
   font-weight:500;
   line-height:1.65;
   letter-spacing:.03em;
-  max-width:440px;
+  max-width:520px;
   /* a long order must not run off the screen */
   max-height:calc(100vh - 28px);
   overflow:hidden;
@@ -1127,32 +1138,47 @@ h1 em{font-style:normal;font-weight:600}
   font-size:9px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;
   color:var(--paper);
 }
+/* One line per line item: bullet, P-number, what it is and its stage, then
+   value and due state pinned right. Nothing stacks, nothing wraps — a long
+   description gives way with an ellipsis so the row stays a single line. */
 .g-tip .it{
-  display:grid;
-  grid-template-columns:24px minmax(0,1fr) auto auto;
-  gap:3px 12px;align-items:baseline;
-  font-size:11px;font-weight:400;line-height:1.55;
-  padding:4px 0;
+  display:flex;align-items:baseline;gap:9px;
+  font-size:11px;font-weight:400;line-height:1.6;
+  padding:3px 0;
+  white-space:nowrap;
 }
-.g-tip .it b{font-weight:600;color:var(--paper);font-size:10px;letter-spacing:.08em}
+.g-tip .it .bul{
+  flex:0 0 auto;
+  width:5px;height:5px;border-radius:50%;
+  background:var(--paper);
+  transform:translateY(-1px);
+}
+.g-tip .it.late .bul{background:#F58A90}
+.g-tip .it b{
+  flex:0 0 auto;min-width:19px;
+  font-weight:600;color:var(--paper);font-size:10px;letter-spacing:.08em;
+}
 .g-tip .it em{
-  font-style:normal;color:var(--paper);min-width:0;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  flex:1 1 auto;min-width:0;
+  font-style:normal;color:var(--paper);
+  overflow:hidden;text-overflow:ellipsis;
 }
 .g-tip .it em .q{
-  display:block;
   font-size:9px;font-weight:500;letter-spacing:.11em;text-transform:uppercase;
   color:var(--paper);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.g-tip .it u{text-decoration:none;font-weight:600;font-variant-numeric:tabular-nums}
+.g-tip .it u{
+  flex:0 0 auto;
+  text-decoration:none;font-weight:600;font-variant-numeric:tabular-nums;
+}
 .g-tip .it s{
+  flex:0 0 auto;
   text-decoration:none;font-size:9.5px;font-weight:500;letter-spacing:.07em;
-  text-transform:uppercase;color:var(--paper);white-space:nowrap;
+  text-transform:uppercase;color:var(--paper);
 }
 .g-tip .it.late s{color:#F58A90;font-weight:600}
 .g-tip .it.more{
-  display:block;margin-top:5px;
+  display:block;margin-top:5px;padding-left:14px;
   font-size:9.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
   color:var(--paper);
 }
@@ -1772,7 +1798,8 @@ a.num:hover{color:var(--red)}
   .stage-idx{font-size:8px}
   .stage-foot{padding:3px 4px 2px}
   .details-grid{grid-template-columns:repeat(3, 1fr);gap:12px}
-    .totals{gap:14px}
+    .totals{min-width:0}
+  .tot{padding-left:14px}
   .tot .v{font-size:19px}
   .value-group.rise{transform:translateY(-22px)}
   .metrics-wrapper.revealed{max-height:280px}
@@ -1782,7 +1809,8 @@ a.num:hover{color:var(--red)}
 @media (max-width:640px){
   .hero{padding:8px 12px 6px}
   .hero .tools{width:100%;align-items:stretch}
-  .totals{justify-content:space-around}
+  .totals{min-width:0}
+  .tot{padding-left:8px}
   .masthead{flex-direction:column;align-items:stretch;gap:10px}
   .sub{font-size:9px}
   h1{font-size:16px}
@@ -2391,7 +2419,13 @@ const money = v => {
   if (v >= 1e3) return '$'+Math.round(v/1e3)+'K';
   return '$'+Math.round(v);
 };
-const esc = s => String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+/* Quotes MUST be escaped, not just angle brackets: sign shop descriptions are
+   full of inch marks — 3/16" polycarbonate, 72"x48", 204" runs — and an
+   unescaped one closes the attribute it sits in. That is what was truncating
+   the hover card's line items mid-list and leaving the fields after the cut
+   reading "undefined". */
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function visible(){
   const L = state.lens;
   if (L === 'districts' || L === 'centers') return ROWS;
@@ -2675,11 +2709,22 @@ const STAGE_RANK = Object.fromEntries(STAGES.map((s,i) => [s.name, i]));
    like count + ' open' turns a missing value into the WORD "undefined" before
    any guard downstream can catch it. So nothing goes into the hover card
    without passing through here — it is the only place that has to be right. */
-const TIP_CLEAN = v => String(v == null ? '' : v)
-  .replace(/[\u0001\u0002\u0003]/g, ' ')
-  .replace(/\b(?:undefined|NaN|null)\b/g, '')
-  .replace(/\s{2,}/g, ' ')
-  .trim();
+const JUNK = /undefined|\bNaN\b|\bnull\b/gi;
+const TIP_CLEAN = v => {
+  const raw = String(v == null ? '' : v);
+  if (JUNK.test(raw)){
+    JUNK.lastIndex = 0;
+    console.warn('[helm] junk in a hover field, scrubbed:', JSON.stringify(raw));
+  }
+  JUNK.lastIndex = 0;
+  return raw
+    .replace(/\u0001/g, ' ')          /* ONLY the field separator: \u0002 and
+                                          \u0003 belong to the packed line-item
+                                          list and must survive this */
+    .replace(JUNK, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+};
 const PACK_TIP = fields => fields.map(TIP_CLEAN).join('\u0001');
 const NUM = v => { const n = Number(v); return isFinite(n) ? n : 0; };
 
@@ -2696,16 +2741,23 @@ const DUE_DATE = r => {
    before it becomes a document rather than a glance. */
 const TIP_ITEMS = o => {
   /* a description carrying one of the separators would split its own row */
-  const clean = v => String(v || '').replace(/[\u0001\u0002\u0003]/g, ' ');
+  const clean = v => String(v || '')
+    .replace(/[\u0001\u0002\u0003]/g, ' ')
+    .replace(JUNK, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
   const list = (o.items || []).slice();
   const show = list.slice(0, 12).map(t => [
     t.line ? 'P' + NUM(t.line) : '\u2014',
     clean(t.desc).slice(0, 54),
-    money(t.value),
-    t.daysLate == null ? 'no date' :
-      t.daysLate > 0 ? t.daysLate + 'd late' :
-      t.daysLate === 0 ? 'today' : 'in ' + (-t.daysLate) + 'd',
-    t.daysLate != null && t.daysLate > 0 ? 'late' : '',
+    money(NUM(t.value)),
+    (() => {
+      const dl = t.daysLate;
+      if (dl == null || !isFinite(Number(dl))) return 'no date';
+      const n = Number(dl);
+      return n > 0 ? n + 'd late' : n === 0 ? 'today' : 'in ' + (-n) + 'd';
+    })(),
+    t.daysLate != null && Number(t.daysLate) > 0 ? 'late' : '',
     clean(t.queue),
     t.age == null ? '' : NUM(t.age) + 'd open'
   ].map(TIP_CLEAN).join('\u0003'));
@@ -3396,20 +3448,18 @@ function wireHoverCard(){
       line('Open for', d[12]) +
       `<span class="k"><span>Value</span><span>${esc(d[5])}</span></span>` +
       `<span class="k"><span>Due</span><span${lateCls}>` +
-        `${esc(d[13] || '\u2014')}${d[6] ? '  \u00b7  ' + esc(d[6]) : ''}</span></span>` +
+        `${esc([d[13], d[6]].filter(Boolean).join('  \u00b7  ') || '\u2014')}</span></span>` +
       (d[10] ? `<span class="ln">Line items</span>` + d[10].split('\u0002').map(r => {
         const f = r.split('\u0003');
         if (f.length < 2) return `<span class="it more">${esc(f[0])}</span>`;
         /* no description on the line? let its stage take the main line rather
            than leaving a dash in front of the value */
         const head = f[1] || f[5] || '\u2014';
-        const under = f[1] ? [f[5], f[6]].filter(Boolean).join('  \u00b7  ')
-                           : (f[6] || '');
+        const side = f[1] ? f[5] : '';        /* stage rides beside the name */
         return `<span class="it${f[4] === 'late' ? ' late' : ''}">` +
+               `<span class="bul"></span>` +
                `<b>${esc(f[0])}</b>` +
-               `<em>${esc(head)}` +
-                 (under ? `<span class="q">${esc(under)}</span>` : '') +
-               `</em>` +
+               `<em>${esc(head)}${side ? ` <span class="q">${esc(side)}</span>` : ''}</em>` +
                `<u>${esc(f[2])}</u>` +
                `<s>${esc(f[3])}</s></span>`;
       }).join('') : '');
