@@ -127,39 +127,49 @@ body{
 .scope-toggle[aria-expanded="true"] .dn{opacity:0;transform:translateY(-3px)}
 .scope-toggle[aria-expanded="true"] .up{opacity:1;transform:translateY(0)}
 
+/* The scope picker reads as a second nav bar rather than a dropdown — a full
+   width strip on paper under the dark topbar, its options spread across it.
+   Same idea as a maker's model bar: quiet, horizontal, one underline. */
 .scope-menu{
   position:absolute;
   top:100%;
-  right:54px;
+  left:0;
+  right:0;
   z-index:70;
   display:flex;
-  flex-direction:column;
-  align-items:flex-end;
-  background:var(--ink);
-  padding:0 22px;
-  max-height:0;
+  justify-content:center;
+  align-items:center;
+  gap:clamp(26px, 5.5vw, 96px);
+  background:var(--paper);
+  padding:0 54px;
+  /* the same height as the topbar above it, so the two read as one masthead */
+  height:0;
   overflow:hidden;
   opacity:0;
-  transition:max-height .5s var(--ease-premium),
-             opacity .35s var(--ease-premium),
-             padding .5s var(--ease-premium);
-  box-shadow:0 18px 40px rgba(14,15,19,0.22);
+  transition:height .45s var(--ease-premium),
+             opacity .3s var(--ease-premium);
 }
-.scope-menu.open{max-height:220px;opacity:1;padding:10px 22px 14px}
+.scope-menu.open{height:var(--topbar);opacity:1}
 .scope-menu button{
   position:relative;
-  font-family:var(--sans);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
-  font-weight:500;border:0;background:transparent;color:var(--paper);
-  padding:9px 0;cursor:pointer;white-space:nowrap;
+  font-family:var(--sans);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  font-weight:500;border:0;background:transparent;color:var(--ink);
+  padding:0 2px;cursor:pointer;white-space:nowrap;line-height:1;
+  height:100%;
+  transition:color .4s var(--ease-premium);
 }
 .scope-menu button::after{
-  content:'';position:absolute;left:0;right:0;bottom:5px;height:1.5px;
-  background:currentColor;opacity:0;transform:scaleX(.4);transform-origin:right;
+  content:'';position:absolute;left:0;right:0;bottom:9px;height:1.5px;
+  background:currentColor;opacity:0;transform:scaleX(.4);transform-origin:center;
   transition:opacity .35s var(--ease-premium), transform .45s var(--ease-premium);
 }
 .scope-menu button[aria-pressed="true"]{font-weight:700}
 .scope-menu button[aria-pressed="true"]::after{opacity:1;transform:scaleX(1)}
-.scope-menu button:hover::after{opacity:.45;transform:scaleX(1)}
+.scope-menu button:hover::after{opacity:.4;transform:scaleX(1)}
+@media (max-width:760px){
+  .scope-menu{justify-content:flex-start;gap:24px;padding:0 20px}
+  .scope-menu.open{overflow-x:auto}
+}
 
 .g-bar-c-label{
   font-size:9px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;
@@ -192,7 +202,7 @@ body{
   align-items:flex-end;
   justify-content:space-between;
   gap:24px;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;        /* the totals belong beside the title, not under it */
   padding-bottom:12px;
   border-bottom:1px solid var(--ink);
   flex-shrink:0;
@@ -230,13 +240,19 @@ h1 em{font-style:normal;font-weight:600}
   max-height:44px;
   overflow:hidden;
 }
+/* the words give way before the figures do, but they get the room that is
+   actually there — the subtitle is three lines of prose, not a caption */
+.masthead-copy{flex:1 1 520px;min-width:0}
+.masthead-copy .sub{max-width:76ch}
+
 .tools{
   display:flex;
   flex-direction:column;
   align-items:flex-end;
   gap:8px;
   transform-origin:100% 100%;
-  flex-shrink:0;
+  flex:0 1 auto;
+  min-width:0;
 }
 
 .seg{display:flex;border:1px solid var(--rule);border-radius:2px;overflow:hidden}
@@ -274,16 +290,15 @@ h1 em{font-style:normal;font-weight:600}
   grid-auto-flow:column;
   grid-auto-columns:minmax(72px,1fr);
   align-items:start;
-  min-width:min(560px, 100%);
 }
-.tot{text-align:right;padding:0 0 0 26px}
+.tot{text-align:right;padding:0 0 0 clamp(18px, 2.6vw, 46px)}
 .tot .v{font-size:26px;font-weight:400;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.005em}
 .tot .k{
   font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
   color:var(--ink);margin-top:5px;
 }
 .tot .n{
-  font-size:11px;font-weight:600;color:var(--ink);margin-top:3px;
+  font-size:11px;font-weight:500;color:var(--ink);margin-top:3px;
   font-variant-numeric:tabular-nums;white-space:nowrap;
 }
 
@@ -511,7 +526,7 @@ h1 em{font-style:normal;font-weight:600}
 .metric.share .v{color:var(--ink);font-weight:600}
 .metric.late .k{color:var(--ink);font-weight:600}
 .metric.late .v{color:var(--ink);font-weight:600}
-.metric .n{font-size:9.5px;color:var(--ink-soft);margin-left:2px;font-weight:400}
+.metric .n{font-size:9.5px;color:var(--ink-soft);margin-right:4px;font-weight:400}
 
 /* ===== BOARDS =====
    Four dense views, sharing one grid rhythm. */
@@ -1004,6 +1019,8 @@ h1 em{font-style:normal;font-weight:600}
   font-variant-numeric:tabular-nums;white-space:nowrap;
 }
 .cal .cell .sum.late{color:var(--red-deep);font-weight:600}
+/* today's money is due now, so it carries the ink rather than sitting back */
+.cal .cell .sum.now{color:var(--ink);font-weight:600}
 .cal .chip{
   display:flex;align-items:center;gap:7px;
   padding:1px 0;
@@ -1073,7 +1090,7 @@ h1 em{font-style:normal;font-weight:600}
 .cal-rail .rl-row .meta{
   display:flex;align-items:center;gap:7px;margin-top:5px;
   font-size:9px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;
-  color:var(--ink-faint);line-height:1.5;
+  color:var(--ink);line-height:1.5;
 }
 .cal-rail .rl-row .meta i{width:6px;height:6px;border-radius:50%;display:block;flex:0 0 auto}
 .cal-rail .rl-row .meta .late{color:var(--red-deep);white-space:nowrap;margin-left:auto}
@@ -1800,8 +1817,8 @@ a.num:hover{color:var(--red)}
   .stage-idx{font-size:8px}
   .stage-foot{padding:3px 4px 2px}
   .details-grid{grid-template-columns:repeat(3, 1fr);gap:12px}
-    .totals{min-width:0}
-  .tot{padding-left:14px}
+    .totals{grid-auto-columns:minmax(60px,1fr)}
+  .tot{padding-left:18px}
   .tot .v{font-size:19px}
   .value-group.rise{transform:translateY(-22px)}
   .metrics-wrapper.revealed{max-height:280px}
@@ -1811,9 +1828,9 @@ a.num:hover{color:var(--red)}
 @media (max-width:640px){
   .hero{padding:8px 12px 6px}
   .hero .tools{width:100%;align-items:stretch}
-  .totals{min-width:0}
-  .tot{padding-left:8px}
-  .masthead{flex-direction:column;align-items:stretch;gap:10px}
+  .totals{grid-auto-columns:minmax(46px,1fr)}
+  .tot{padding-left:12px}
+  .masthead{flex-direction:column;align-items:stretch;gap:10px;flex-wrap:wrap}
   .sub{font-size:9px}
   h1{font-size:16px}
   .details-grid{grid-template-columns:repeat(2, 1fr)}
@@ -1879,9 +1896,11 @@ a.num:hover{color:var(--red)}
   <!-- HERO -->
   <div class="hero" id="hero">
     <div class="masthead" id="masthead">
-      <div>
+      <div class="masthead-copy">
         <h1>Open Work Across the <em>Pipeline</em></h1>
-        <div class="sub" id="subText"></div>
+        <div class="sub" id="subText">Ribbon thickness is open dollars held at each stage, read in production-flow
+          order. Valley sits above the centre line, South Bay below, each sized by its share of that stage. Every
+          figure is what is held there now, not a rate of drop-off.</div>
       </div>
       <div class="tools" id="tools">
         <div class="totals">
@@ -1894,7 +1913,7 @@ a.num:hover{color:var(--red)}
           <div class="tot"><div class="v" id="tOrders">—</div><div class="k">Orders</div>
             <div class="n" id="tOrdersN">—</div></div>
           <div class="tot"><div class="v" id="tItems">—</div><div class="k">Line Items</div>
-            <div class="n" id="tItemsN">across the board</div></div>
+            <div class="n" id="tItemsN">Across the Board</div></div>
         </div>
       </div>
     </div>
@@ -1929,6 +1948,25 @@ a.num:hover{color:var(--red)}
       </div>
     </div>
     <div class="details-grid" id="detailsGrid"></div>
+
+    <!-- THE MONTH — what falls due, day by day -->
+    <section class="board" id="leaderSec">
+      <div class="panel-header"><div class="sec-title"><h2>The Month</h2></div>
+        <span class="board-sub" id="leaderSub">Every open order on the day it is due. Colour is the centre; a day that has already passed carries its overdue count in claret. Pick a day to read it out on the right.</span></div>
+      <div class="cal-bar">
+        <div class="cal-month" id="calMonth">—</div>
+        <div class="seg cal-nav" id="calNav" role="group" aria-label="Month">
+          <button data-n="-1" title="Previous month">&#8249;</button>
+          <button data-n="0">This month</button>
+          <button data-n="1" title="Next month">&#8250;</button>
+        </div>
+      </div>
+      <div class="cal-wrap">
+        <div class="cal" id="cal"></div>
+        <aside class="cal-rail" id="calRail"></aside>
+      </div>
+      <div class="leader-key" id="leaderKey"></div>
+    </section>
 
     <!-- SCHEDULE -->
     <div class="panel-header sched-title">
@@ -1999,25 +2037,6 @@ a.num:hover{color:var(--red)}
       <div class="k">Square in the row — the centre</div>
     </div>
     <div class="legend" id="centerLegend"></div>
-
-    <!-- THE MONTH — what falls due, day by day -->
-    <section class="board" id="leaderSec">
-      <div class="panel-header"><div class="sec-title"><h2>The Month</h2></div>
-        <span class="board-sub" id="leaderSub">Every open order on the day it is due. Colour is the centre; a day that has already passed carries its overdue count in claret. Pick a day to read it out on the right.</span></div>
-      <div class="cal-bar">
-        <div class="cal-month" id="calMonth">—</div>
-        <div class="seg cal-nav" id="calNav" role="group" aria-label="Month">
-          <button data-n="-1" title="Previous month">&#8249;</button>
-          <button data-n="0">This month</button>
-          <button data-n="1" title="Next month">&#8250;</button>
-        </div>
-      </div>
-      <div class="cal-wrap">
-        <div class="cal" id="cal"></div>
-        <aside class="cal-rail" id="calRail"></aside>
-      </div>
-      <div class="leader-key" id="leaderKey"></div>
-    </section>
 
     <!-- AGING MATRIX -->
     <section class="board" id="agingSec">
@@ -2635,6 +2654,16 @@ function drawFlow(g){
   const LU = (g.lateUp || []).map(v => v > 0 ? v*half : 0);
   const LD = (g.lateDn || []).map(v => v > 0 ? v*half : 0);
 
+  /* just the outer edge, open — for the hairline that marks the total */
+  function edgePath(at){
+    let d = `M 0 ${at(0)} L ${cx(0)} ${at(0)}`;
+    for (let i=0;i<n-1;i++){
+      const mid = (cx(i)+cx(i+1))/2;
+      d += ` C ${mid} ${at(i)} ${mid} ${at(i+1)} ${cx(i+1)} ${at(i+1)}`;
+    }
+    return d + ` L ${W} ${at(n-1)}`;
+  }
+
   function areaPath(topAt, botAt){
     let d = `M 0 ${topAt(0)} L ${cx(0)} ${topAt(0)}`;
     for (let i=0;i<n-1;i++){
@@ -2746,10 +2775,12 @@ function renderFlow(S){
   animId = requestAnimationFrame(step);
 }
 
+/* Count leads, money follows: "Overdue · 257 · $54K". How many pieces of work
+   is the thing you act on; the dollars tell you how much it matters. */
 function metricHTML(k, v, n, cls){
   return `<div class="metric${cls?' '+cls:''}">
     <span class="k">${k}</span>
-    <span class="v">${v}${n!==undefined&&n!==null?`<span class="n">· ${n}</span>`:''}</span>
+    <span class="v">${n!==undefined&&n!==null?`<span class="n">${n} ·</span>`:''}${v}</span>
   </div>`;
 }
 
@@ -2761,7 +2792,7 @@ function renderFoots(S, revealMetrics){
     <div class="stage-foot">
       <div class="value-group${revealMetrics ? ' rise' : ''}">
         <div class="foot-value">${esc(money(s.value))}</div>
-        <div class="foot-items">${s.count} ${s.count===1?'item':'items'}</div>
+        <div class="foot-items">${s.count} ${s.count===1?'Item':'Items'}</div>
       </div>
       <div class="metrics-wrapper${revealMetrics ? ' revealed' : ''}">
         ${metricHTML('Share', s.share, null, 'share')}
@@ -2855,7 +2886,7 @@ const TIP_ITEMS = o => {
     clean(t.queue),
     t.age == null ? '' : NUM(t.age) + 'd open'
   ].map(TIP_CLEAN).join('\u0003'));
-  if (list.length > 12) show.push('+' + (list.length - 12) + ' more line items');
+  if (list.length > 12) show.push('+' + (list.length - 12) + ' more Line Items');
   return show.join('\u0002');
 };
 
@@ -3091,7 +3122,7 @@ function rowHTML(r, half, win){
 function bandSummary(list){
   const v = list.reduce((a,r) => a+r.value, 0);
   const late = list.filter(r => r.daysLate !== null && r.daysLate > 0).length;
-  return `${list.length} ${list.length===1?'order':'orders'} · ${money(v)}` +
+  return `${list.length} ${list.length===1?'Order':'Orders'} · ${money(v)}` +
          (late ? ` · <b>${late} overdue</b>` : '');
 }
 
@@ -3537,7 +3568,7 @@ function wireHoverCard(){
       line('Centre', d[2] + (d[14] ? '  \u00b7  ' + d[14] : '')) +
       line('Rep', d[8] || '\u2014') +
       line('Stage', d[3]) +
-      line('Line items', d[4]) +
+      line('Line Items', d[4]) +
       line('Progress', d[9] || '\u2014') +
       line('Open for', d[12]) +
       `<span class="k"><span>Value</span><span>${esc(d[5])}</span></span>` +
@@ -3762,7 +3793,7 @@ const AGE_BUCKETS = [
 const cell = (v, n, cls) =>
   `<div class="mc ${v > 0 ? (cls||'') : 'zero'}">` +
   `<span class="v">${v > 0 ? esc(money(v)) : '—'}</span>` +
-  `<span class="n">${n} ${n===1?'order':'orders'}</span></div>`;
+  `<span class="n">${n} ${n===1?'Order':'Orders'}</span></div>`;
 
 /* ---- where work is ageing ---------------------------------------------- */
 function renderAging(rows){
@@ -4439,7 +4470,7 @@ function renderKeyMetrics(S){
 
   /* the words for a stage: its name, then its share and its item count. the
      count is no longer something you have to hover to find. */
-  const subOf = s => `${fmtPct(pctOf(s.value))} of open · ${s.count} ${s.count===1?'item':'items'}`;
+  const subOf = s => `${fmtPct(pctOf(s.value))} of open · ${s.count} ${s.count===1?'Item':'Items'}`;
 
   let order = 0;
   const stat = (s, leftPct, topPct) => {
@@ -4652,7 +4683,8 @@ function renderLeaderboard(rows){
     const list = byDay.get(k) || [];
     const out  = d.getMonth() !== view.getMonth();
     const wknd = d.getDay() === 0 || d.getDay() === 6;
-    const past = d < today;
+    const past  = d < today;      /* claret on the day's total */
+    const ahead = d > today;      /* only the future is dimmed — today is due now */
     const value = list.reduce((a,o)=>a+o.value, 0);
 
     const cls = ['cell', out?'out':'', wknd?'weekend':'',
@@ -4673,7 +4705,7 @@ function renderLeaderboard(rows){
                    o.age == null ? '' : NUM(o.age) + 'd', DUE_DATE(o),
                    o.facility === 'valley' ? 'Valley' : o.facility === 'southbay' ? 'South Bay' : '',
                    o.tenant || '']);
-      return `<span class="chip${past?'':' ahead'}" data-tip="${esc(tip)}"
+      return `<span class="chip${ahead?' ahead':''}" data-tip="${esc(tip)}"
         data-oid="${esc(o.orderId)}" data-tenant="${esc(o.tenant || '')}"
         style="--cc:${CENTRE_INK[o.center] || 'var(--ink)'}">
         <i style="background:${col}"></i>
@@ -4687,7 +4719,7 @@ function renderLeaderboard(rows){
     return `<div class="${cls}" data-day="${k}">
       <div class="top">
         <span class="d">${d.getDate()}</span>
-        ${list.length ? `<span class="sum${past?' late':''}">${esc(money(value))}</span>` : ''}
+        ${list.length ? `<span class="sum${past?' late':k===todayKey?' now':''}">${esc(money(value))}</span>` : ''}
       </div>
       ${chips}${more}
     </div>`;
@@ -4734,7 +4766,7 @@ function renderLeaderboard(rows){
         CAL_KEY(pd)===todayKey ? ' \u00b7 today' : ''}</div>
       <div class="rl-date">${pd.toLocaleDateString([], {month:'long', day:'numeric'})}</div>
       <div class="rl-sum">${list.length
-        ? `${esc(money(value))} \u00b7 ${list.length}${list.length===1?' order':' orders'}` +
+        ? `${esc(money(value))} \u00b7 ${list.length}${list.length===1?' Order':' Orders'}` +
           (past ? ` \u00b7 <span class="late">past due</span>` : '')
         : 'nothing due'}</div>
     </div>
@@ -4800,7 +4832,7 @@ function renderTotals(rows){
   const late = rows.filter(r => r.daysLate !== null && r.daysLate > 0);
   const today = rows.filter(r => r.daysLate === 0);
   const orders = new Set(rows.map(r => r.orderId)).size;
-  const items = n => n.toLocaleString() + (n === 1 ? ' item' : ' items');
+  const items = n => n.toLocaleString() + (n === 1 ? ' Item' : ' Items');
 
   const put = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
   put('tOpen',    money(sum(rows)));
@@ -4810,9 +4842,9 @@ function renderTotals(rows){
   put('tToday',   money(sum(today)));
   put('tTodayN',  items(today.length));
   put('tOrders',  orders.toLocaleString());
-  put('tOrdersN', 'open right now');
+  put('tOrdersN', 'Open Right Now');
   put('tItems',   rows.length.toLocaleString());
-  put('tItemsN',  'across the board');
+  put('tItemsN',  'Across the Board');
 }
 
 /* The ring splits by whatever the header is not already telling you:
@@ -4878,7 +4910,7 @@ function renderDetails(S){
         </svg>
         <div class="ring-mid">
           <span class="v">${esc(money(s.value))}</span>
-          <span class="n">${s.count} ${s.count===1?'item':'items'} · ${esc(s.share)}</span>
+          <span class="n">${s.count} ${s.count===1?'Item':'Items'} · ${esc(s.share)}</span>
         </div>
       </div>
       <figcaption>
@@ -5020,8 +5052,11 @@ function setupScroll(){
     tools.style.transform  = 'scale(' + (1 - 0.07*f).toFixed(4) + ')';
 
     const t = ease(track(p, 0, 0.11));
+    /* measure the subtitle rather than assuming two lines of it — a hardcoded
+       height clipped the last line at any width where the text wrapped further */
+    const full = subText.scrollHeight || 44;
     subText.style.opacity   = (1 - t).toFixed(3);
-    subText.style.maxHeight = ((1 - t) * 44).toFixed(1) + 'px';
+    subText.style.maxHeight = ((1 - t) * full).toFixed(1) + 'px';
     subText.style.marginTop = ((1 - t) * 6).toFixed(1) + 'px';
 
     const want = p > (metricsRevealed ? REVEAL_OUT : REVEAL_IN);
@@ -5094,7 +5129,7 @@ function stamp(when){
   document.getElementById('stamp').textContent =
     (demoMode ? 'Demo data · ' : '') + 'Updated ' +
     when.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}) +
-    ' · ' + ROWS.length.toLocaleString() + ' line items' +
+    ' · ' + ROWS.length.toLocaleString() + ' Line Items' +
     ' · refreshes every ' + Math.round(REFRESH_MS/60000) + ' minutes' +
     (REP_FIELD ? ' · rep field: ' + REP_FIELD : '');
 }
@@ -5301,6 +5336,8 @@ wireRowExpand();
 wireClientExpand();
 wireHoverCard();
 wireLeaderboard();
+paintSubText();          /* paintFilters only runs on a click; this line has to
+                            be right from the first paint */
 initSmoothScroll();
 
 /* keep it current on a wall display */
