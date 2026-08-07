@@ -5318,12 +5318,10 @@ document.querySelectorAll('.district-seg button').forEach(b =>
     if (!b) return;
     state.due = b.dataset.d;
     paintFilters();
-    setOpen(false);
     renderKeepingPlace();
-  });
-  /* anywhere else closes it */
-  document.addEventListener('click', e => {
-    if (!menu.contains(e.target) && e.target !== btn) setOpen(false);
+    /* the bar stays: it is a nav bar, not a dropdown. Only the chevron
+       closes it, so picking a scope and then a centre does not make it
+       vanish underneath you. */
   });
   addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
 })();
