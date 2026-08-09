@@ -5586,8 +5586,10 @@ function setupScroll(){
   function paint(p){
     /* Masthead recedes rather than switching state. */
     const f = ease(track(p, 0, 0.16));
-    masthead.style.opacity = (1 - 0.56*f).toFixed(3);
-    tools.style.opacity    = (1 - 0.68*f).toFixed(3);
+    /* the headline and the figures hold their ink as the page moves — they are
+       the numbers you are reading, not chrome that should recede */
+    masthead.style.opacity = 1;
+    tools.style.opacity    = 1;
     tools.style.transform  = 'scale(' + (1 - 0.07*f).toFixed(4) + ')';
 
     const t = ease(track(p, 0, 0.11));
