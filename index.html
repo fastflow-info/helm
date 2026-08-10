@@ -2509,7 +2509,22 @@ const STAGES = [
 const OK_STATUS = new Set(['wip','order','approved']);
 const CACHE_TTL = 8*60*1000;
 
-let locCache = {}, DIAG = [], ROWS = [], memCache = null, demoMode = false;
+/* The API sweep is the slow part of opening this file — reused across page
+   loads (not just within one tab) so reopening within CACHE_TTL paints real
+   data immediately instead of re-running it from scratch. */
+const DATA_CACHE_KEY = 'fs_helm_data_v1';
+function loadCachedData(){
+  try{
+    const parsed = JSON.parse(localStorage.getItem(DATA_CACHE_KEY));
+    return (parsed && Array.isArray(parsed.rows) && parsed.at) ? parsed : null;
+  }catch(e){ return null; }
+}
+function saveCachedData(rows){
+  try{ localStorage.setItem(DATA_CACHE_KEY, JSON.stringify({at:Date.now(), rows})); }
+  catch(e){ /* quota or blocked storage — fetch still works without it */ }
+}
+
+let locCache = {}, DIAG = [], ROWS = [], memCache = loadCachedData(), demoMode = false;
 /* One scope for the page: act (needs action) | late | today | all */
 let state = { lens:'districts', due:'all' };
 let metricsRevealed = false;
@@ -5790,8 +5805,16 @@ const BOOT = (() => {
 
 async function load(force){
   if (!force && memCache && Date.now()-memCache.at < CACHE_TTL){
+    /* Real data from last time is on hand — paint it and stop. No live fetch,
+       no second render: that's the whole point of the cache. autoRefresh's
+       own interval (and the visibility check below, seeded with this
+       timestamp) still bring it current once CACHE_TTL passes. */
     ROWS = memCache.rows; demoMode = false; render(); stamp(new Date(memCache.at));
-  } else if (!ROWS.length){
+    BOOT.done();
+    lastLoad = memCache.at;
+    return;
+  }
+  if (!ROWS.length){
     renderSkeleton();
   }
   DIAG = [];
@@ -5806,6 +5829,7 @@ async function load(force){
     for (const r of a.concat(b)) if (!seen.has(r.uid)){ seen.add(r.uid); merged.push(r); }
     if (!merged.length) throw new Error('API responded but returned 0 usable line items');
     ROWS = merged; demoMode = false; memCache = {at:Date.now(), rows:merged};
+    saveCachedData(merged);
     setNotice(''); render(); stamp(new Date()); toTopOnce();
     BOOT.to(97, 'Drawing');
     trendSave(ROWS); renderTrend();
