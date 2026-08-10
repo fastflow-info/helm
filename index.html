@@ -6,6 +6,13 @@
 <title>Helm — FASTSIGNS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- the handshake with each host costs a round trip; start them all at parse
+     time rather than when the first request needs them -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://fs2025.v2api.corebridge.net" crossorigin>
+<link rel="preconnect" href="https://fs2450.v2api.corebridge.net" crossorigin>
+<link rel="dns-prefetch" href="https://fs2025.v2api.corebridge.net">
+<link rel="dns-prefetch" href="https://fs2450.v2api.corebridge.net">
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -245,7 +252,7 @@ h1 em{font-style:normal;font-weight:600}
 /* the words give way before the figures do, but they get the room that is
    actually there — the subtitle is three lines of prose, not a caption */
 .masthead-copy{flex:1 1 520px;min-width:0}
-.masthead-copy .sub{max-width:76ch}
+.masthead-copy .sub{max-width:92ch}
 
 .tools{
   display:flex;
@@ -312,7 +319,7 @@ h1 em{font-style:normal;font-weight:600}
   font-size:10px;
   line-height:1.5;
   color:var(--ink-soft);
-  background:rgba(14,15,19,0.03);
+  background:transparent;
   flex-shrink:0;
 }
 .notice.show{display:block}
@@ -377,6 +384,7 @@ h1 em{font-style:normal;font-weight:600}
 
 /* ===== RIBBON — MIDDLE, FLEXIBLE ===== */
 .ribbon-wrap{
+  position:relative;
   flex:1;
   display:flex;
   align-items:stretch;
@@ -417,6 +425,49 @@ h1 em{font-style:normal;font-weight:600}
 }
 .flow-mark.up{color:var(--red-deep)}
 .flow-mark.dn{color:var(--blue-deep)}
+
+/* ===== RIBBON READOUT =====
+   No card and no ground: the figure for whatever you are pointing at simply
+   appears on the paper, at the left, halfway up its own half of the band. */
+.flow-say{
+  position:absolute;
+  left:0;
+  transform:translateY(-50%);
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .28s var(--ease-premium), top .35s var(--ease-premium);
+  max-width:34%;
+}
+.flow-say.on{opacity:1}
+.flow-say .fs-top{
+  font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-faint);
+  white-space:nowrap;
+}
+.flow-say .fs-fig{
+  font-size:34px;font-weight:200;line-height:1.05;letter-spacing:-.02em;
+  color:var(--ink);font-variant-numeric:tabular-nums;
+  margin-top:5px;
+}
+.flow-say .fs-sub{
+  margin-top:4px;
+  font-size:11px;font-weight:600;letter-spacing:.04em;
+  color:var(--ink);white-space:nowrap;
+}
+.flow-say .fs-say{
+  margin-top:5px;
+  font-size:11px;font-weight:400;line-height:1.5;letter-spacing:.01em;
+  color:var(--ink-soft);
+}
+.flow-hi{
+  position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .22s var(--ease-premium);
+}
+.flow-hi.on{opacity:1}
+.flow-say.up .fs-top{color:var(--red-deep)}
+.flow-say.dn .fs-top{color:var(--blue-deep)}
 
 /* ===== STAGE FOOT — VALUES + METRICS AT BOTTOM ===== */
 .foots-wrap{
@@ -826,7 +877,7 @@ h1 em{font-style:normal;font-weight:600}
 .score .sc.dim{color:var(--ink-soft);font-weight:400}
 .score .sc.ord{font-weight:600;gap:8px}
 .score .sc.ord i{width:7px;height:7px;border-radius:50%;flex:none}
-.score a.sc:hover{background:#F6F4F0}
+.score a.sc:hover{background:rgba(14,15,19,0.026)}
 .stall-empty{
   padding:34px 0;text-align:center;
   font-size:11.5px;font-weight:500;letter-spacing:.05em;color:var(--ink-soft);
@@ -2126,9 +2177,9 @@ a.num:hover{color:var(--red)}
     <div class="masthead" id="masthead">
       <div class="masthead-copy">
         <h1>Open Work Across the <em>Pipeline</em></h1>
-        <div class="sub" id="subText">Ribbon thickness is open dollars held at each stage, read in production-flow
-          order. Valley sits above the centre line, South Bay below, each sized by its share of that stage. Every
-          figure is what is held there now, not a rate of drop-off.</div>
+        <div class="sub" id="subText">Ribbon thickness is open dollars held at each stage, in production-flow
+          order. Valley above the centre line, South Bay below. Solid is due now, pale still has time. Hover either
+          to read it.</div>
       </div>
       <div class="tools" id="tools">
         <div class="totals">
@@ -2566,20 +2617,27 @@ async function getLocations(tk){
 const iso = d => new Date(d).toISOString();
 const shift = n => { const d = new Date(); d.setDate(d.getDate()+n); return d; };
 
-async function sweep(tk, locId, filterFor, start, end){
+/* onPage is called with each page the moment it arrives, so the board can be
+   drawn from the first results while the rest are still in flight. */
+async function sweep(tk, locId, filterFor, start, end, onPage){
   const base = {PageSize:100, Sort:'modified', Direction:'desc', OrderLocationId:locId,
     IncludeProductDetails:true, DateFilterFor:filterFor, StartDate:iso(start), EndDate:iso(end)};
   const first = await cbPost(tk,'ExOrder/SearchOrders_v2',{...base, Page:1});
   let rows = asArr(first);
+  if (onPage && rows.length) onPage(rows, tk);
   const pc = Math.min(first.pageCount || first.PageCount || 1, 10);
   if (pc > 1){
     const rest = await Promise.all(Array.from({length:pc-1},(_,i)=>
-      cbPost(tk,'ExOrder/SearchOrders_v2',{...base,Page:i+2}).then(asArr).catch(()=>[])));
+      cbPost(tk,'ExOrder/SearchOrders_v2',{...base,Page:i+2}).then(r => {
+        const a = asArr(r);
+        if (onPage && a.length) onPage(a, tk);
+        return a;
+      }).catch(()=>[])));
     rest.forEach(r => rows = rows.concat(r));
   }
   return rows;
 }
-async function fetchTenant(tk){
+async function fetchTenant(tk, onPage){
   const t = TENANTS[tk];
   const all = await getLocations(tk);
   const hit = l => t.centers.some(c => {
@@ -2590,9 +2648,9 @@ async function fetchTenant(tk){
   if (!locs.length){ locs = all; DIAG.push(tk+': no name match, using all '+all.length+' locations'); }
   DIAG.push(tk+': '+locs.length+' locations — '+locs.map(l=>l.name).join(', '));
   const chunks = await Promise.all(locs.flatMap(l => [
-    sweep(tk,l.id,'modified',shift(-150),shift(60))
+    sweep(tk,l.id,'modified',shift(-150),shift(60), onPage)
       .catch(e => { DIAG.push(tk+'/'+l.name+' modified sweep failed: '+e.message); return []; }),
-    sweep(tk,l.id,'due',shift(-365),shift(-1)).catch(()=>[])
+    sweep(tk,l.id,'due',shift(-365),shift(-1), onPage).catch(()=>[])
   ]));
   const flat = chunks.flat();
   DIAG.push(tk+': '+flat.length+' raw order records');
@@ -2648,7 +2706,7 @@ function pick(obj, keys){
   return null;
 }
 
-function normalize(orders, tk){
+function normalize(orders, tk, quiet){
   const out = [];
   let sk = 0;
   for (const o of orders){
@@ -2698,7 +2756,7 @@ function normalize(orders, tk){
       });
     }
   }
-  DIAG.push(tk+': '+out.length+' line items kept ('+sk+' skipped on status)');
+  if (!quiet) DIAG.push(tk+': '+out.length+' line items kept ('+sk+' skipped on status)');
   return out;
 }
 
@@ -2803,6 +2861,13 @@ function build(rows){
       dueNowByCenter: Object.fromEntries(CENTERS.map(c =>
         [c.name, sum(late.filter(r=>r.center===c.name)) +
                  sum(today.filter(r=>r.center===c.name))])),
+      /* how many line items each half holds, and how many of those are due */
+      cntValley:   rs.filter(r=>r.facility==='valley').length,
+      cntSouthbay: rs.filter(r=>r.facility==='southbay').length,
+      dueCntValley:   late.filter(r=>r.facility==='valley').length +
+                      today.filter(r=>r.facility==='valley').length,
+      dueCntSouthbay: late.filter(r=>r.facility==='southbay').length +
+                      today.filter(r=>r.facility==='southbay').length,
       lateValue:sum(late), lateCount:late.length,
       todayValue:sum(today), todayCount:today.length,
       aheadValue:sum(ahead), aheadCount:ahead.length,
@@ -2850,12 +2915,11 @@ function paintSubText(){
   const name = L === 'valley' ? 'Valley'
              : L === 'southbay' ? 'South Bay'
              : (CENTERS.find(c => c.name === L) || {}).name;
-  el.textContent = 'Ribbon thickness is open dollars held at each stage, read in ' +
+  el.textContent = 'Ribbon thickness is open dollars held at each stage, in ' +
     'production-flow order. ' +
-    (split
-      ? 'Valley sits above the centre line, South Bay below, each sized by its share of that stage. '
-      : `Both halves are ${name || 'this scope'} alone, mirrored about the centre line. `) +
-    'Every figure is what is held there now, not a rate of drop-off.';
+    (split ? 'Valley above the centre line, South Bay below. '
+           : `Both halves are ${name || 'this scope'} alone, mirrored. `) +
+    'Solid is due now, pale still has time. Hover either to read it.';
 }
 
 function lensColors(){
@@ -3024,6 +3088,17 @@ function drawFlow(g){
     return out;
   }
 
+  /* the highlight overlay redraws from these, so it can never drift from what
+     is actually on screen */
+  FLOW_ART = {
+    W, H, cy, half, n,
+    bands: !!g.bands,
+    upT: areaPath(i => cy - U[i], i => cy),
+    dnT: areaPath(i => cy, i => cy + D[i]),
+    upL: areaPath(i => cy - LU[i], i => cy),
+    dnL: areaPath(i => cy, i => cy + LD[i])
+  };
+
   const svg = `<svg id="flow" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
     xmlns="http://www.w3.org/2000/svg"
     role="img" aria-label="Open dollars held at each production stage">
@@ -3052,7 +3127,159 @@ function drawFlow(g){
   document.getElementById('flowWrap').innerHTML = svg + marks;
 }
 
+/* The pale band is the whole of what is open at a stage; the solid one is the
+   part of it that is due now. Pointing at either says which it is and what it
+   is worth, in two lines on the paper beside it, and lifts that one cell of
+   the ribbon: the layer you are on, inside that stage's own two rules, on
+   your side of the centre line. Nothing else changes. */
+let FLOW_S = [], FLOW_ART = null;
+
+function paintFlowHighlight(svgEl, i, up, solid){
+  if (!svgEl) return;
+  const A = FLOW_ART;
+  if (!A){ svgEl.innerHTML = ''; return; }
+
+  const {W, H, cy, n} = A;
+  const colW = W/n, x0 = colW*i, x1 = x0 + colW;
+  const c = lensColors();
+  const tint = rgbCss(hex2rgb((up ? c.up : c.dn).to));
+
+  /* the cell is cut out of the drawn shape, not painted over it, so the
+     highlight follows the curve exactly */
+  const cid = 'fhClip' + i + (up ? 'u' : 'd');
+  const clip = `<clipPath id="${cid}"><rect x="${x0.toFixed(1)}" y="${up ? 0 : cy}"
+      width="${colW.toFixed(1)}" height="${(up ? cy : H - cy).toFixed(1)}"/></clipPath>`;
+
+  /* Exactly one layer, never both. The two areas are drawn from the centre
+     line outward, so the total contains the solid one: filling both as a
+     single path with evenodd cuts the solid part straight out and leaves the
+     pale band alone. Painting the total and washing the solid back is what
+     tinted the whole column before. */
+  /* The lift is the layer's own colour, strengthened: the solid one deepens,
+     the pale one comes up toward full. No new colour enters the page. */
+  const base = (up ? c.up : c.dn).to;
+  const dTot = up ? A.upT : A.dnT;
+  const dSol = up ? A.upL : A.dnL;
+  const art = solid
+    ? `<g clip-path="url(#${cid})">
+         <path d="${dSol}" fill="${darken(base, 0.30)}"/>
+       </g>`
+    : `<g clip-path="url(#${cid})">
+         <path d="${dTot} ${dSol}" fill="${base}" fill-rule="evenodd" opacity="0.66"/>
+       </g>`;
+
+  /* the stage's own two rules, and the piece of the centre line between them */
+  const rule = (x) => `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="0" y2="${H}"
+    stroke="rgba(14,15,19,0.24)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+
+  svgEl.innerHTML = `<defs>${clip}</defs>${art}${rule(x0)}${rule(x1)}
+    <line x1="${x0.toFixed(1)}" x2="${x1.toFixed(1)}" y1="${cy}" y2="${cy}"
+      stroke="rgba(14,15,19,0.30)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+}
+
+function wireFlowTip(){
+  const wrap = document.getElementById('flowWrap');
+  const band = document.getElementById('ribbonWrap');
+  if (!wrap || !band) return;
+
+  const say = document.createElement('div');
+  say.className = 'flow-say';
+  band.appendChild(say);
+
+  const hi = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  hi.setAttribute('class', 'flow-hi');
+  hi.setAttribute('preserveAspectRatio', 'none');
+  band.appendChild(hi);
+  const clearHi = () => { hi.innerHTML = ''; hi.classList.remove('on'); };
+
+  wrap.addEventListener('mousemove', e => {
+    const S = FLOW_S;
+    const r = wrap.getBoundingClientRect();
+    if (!S.length || !shown || !r.width || !r.height){ say.classList.remove('on'); clearHi(); return; }
+
+    const n = S.length;
+    const i = Math.max(0, Math.min(n - 1, Math.floor((e.clientX - r.left) / (r.width / n))));
+    const s = S[i];
+    const cy = r.height/2;
+    const y  = e.clientY - r.top;
+    const up = y < cy;
+
+    /* the same geometry the ribbon was drawn with, so the reading matches
+       the pixel under the pointer rather than approximating it */
+    const half = Math.max(20, (r.height/2 - FLOW.PAD) * FLOW.FILL);
+
+    /* The edge between two columns is a bezier whose control points sit at the
+       midpoint in x, which makes its height LINEAR in x between the two column
+       centres. So the drawn thickness under the pointer can be read exactly,
+       rather than borrowing the nearest column's own figure — that mismatch is
+       why hovering the slope between a heavy stage and a light one did
+       nothing: the ink there belonged to neither number. */
+    const colW = r.width / n;
+    const at = arr => {
+      if (!arr || !arr.length) return 0;
+      const t = ((e.clientX - r.left) - colW/2) / colW;   /* in column-centre units */
+      const a = Math.floor(t), u = t - a;
+      const lo = arr[Math.max(0, Math.min(n-1, a))]     || 0;
+      const hi = arr[Math.max(0, Math.min(n-1, a+1))]   || 0;
+      return (a < 0 || a >= n-1) ? (a < 0 ? lo : hi) : lo + (hi - lo)*u;
+    };
+
+    const full = Math.max(FLOW.MIN_PX, at(up ? shown.up : shown.dn) * half);
+    const solidPx = at((up ? shown.lateUp : shown.lateDn) || []) * half;
+    const dy = Math.abs(y - cy);
+    const HIT = 14;
+
+    if (dy > full + HIT){ say.classList.remove('on'); clearHi(); return; }   /* off the shape */
+
+    const L = state.lens;
+    const split = (L === 'districts' || L === 'centers');
+    const side = split
+      ? (up ? {name:'Valley',    val:s.valley,   due:s.dueNowValley,
+               cnt:s.cntValley,   dueCnt:s.dueCntValley}
+            : {name:'South Bay', val:s.southbay, due:s.dueNowSouthbay,
+               cnt:s.cntSouthbay, dueCnt:s.dueCntSouthbay})
+      : {name: L === 'valley' ? 'Valley' : L === 'southbay' ? 'South Bay' : L,
+         val: s.value, due: s.dueNow,
+         cnt: s.count, dueCnt: (s.lateCount || 0) + (s.todayCount || 0)};
+
+    if (!(side.val > 0)){ say.classList.remove('on'); clearHi(); return; }
+
+    const due  = Math.min(side.due || 0, side.val);
+    const rest = Math.max(0, side.val - due);
+    /* Below a few pixels the two layers cannot be told apart by pointing, so
+       the reading falls to whichever one the stage is mostly made of. */
+    const solid = full < 6
+      ? (side.val > 0 && due / side.val >= 0.5)
+      : dy <= Math.max(solidPx, 1);
+    const val  = solid ? due : rest;
+    const pct  = Math.round(val / side.val * 100);
+
+    const items    = solid ? side.dueCnt : Math.max(0, side.cnt - side.dueCnt);
+    const plural   = n => n === 1 ? 'Item' : 'Items';
+
+    say.className = 'flow-say on ' + (up ? 'up' : 'dn');
+    /* halfway up whichever half the pointer is in */
+    say.style.top = (up ? cy/2 : cy + cy/2).toFixed(0) + 'px';
+    say.innerHTML =
+      `<div class="fs-top">${esc(s.name)} \u00b7 ${esc(side.name)}</div>
+       <div class="fs-fig">${esc(money(val))}</div>
+       <div class="fs-sub">${items} ${plural(items)} \u00b7 ${pct}% of ${esc(money(side.val))}</div>
+       <div class="fs-say">${solid
+         ? 'Past its promised date or falling due today. This is the solid colour.'
+         : 'Still inside its promised date. This is the pale band behind it.'}</div>`;
+
+    if (FLOW_ART){
+      hi.setAttribute('viewBox', `0 0 ${FLOW_ART.W} ${FLOW_ART.H}`);
+      hi.classList.add('on');
+      paintFlowHighlight(hi, i, up, solid);
+    }
+  });
+
+  wrap.addEventListener('mouseleave', () => { say.classList.remove('on'); clearHi(); });
+}
+
 function renderFlow(S){
+  FLOW_S = S;
   const target = flowTarget(S);
   const reduced = typeof matchMedia === 'function' &&
     matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -5820,10 +6047,37 @@ async function load(force){
   DIAG = [];
   try{
     BOOT.to(72, 'Reaching CoreBridge');
+
+    /* Early paint: every page that lands is normalised and drawn straight
+       away, so the board is on screen from the first results rather than
+       after the last one. Only on a cold start — with rows already up, a
+       half-finished set would be a downgrade, not a head start. */
+    const cold = !ROWS.length;
+    let early = [], earlySeen = new Set(), earlyAt = 0, earlyTimer = null;
+    const paintEarly = () => {
+      earlyTimer = null;
+      if (!cold || !early.length) return;
+      ROWS = early.slice();
+      demoMode = false;
+      render();
+      BOOT.to(Math.min(94, 74 + early.length/14), 'Drawing what has landed');
+    };
+    const onPage = (raw, tk) => {
+      if (!cold) return;
+      for (const r of normalize(raw, tk, true))
+        if (!earlySeen.has(r.uid)){ earlySeen.add(r.uid); early.push(r); }
+      const now = performance.now();
+      if (now - earlyAt > 450 && !earlyTimer){
+        earlyAt = now;
+        earlyTimer = setTimeout(paintEarly, 0);
+      }
+    };
+
     const [a,b] = await Promise.all([
-      fetchTenant('FS2025').then(o => { BOOT.to(84, 'Valley in'); return normalize(o,'FS2025'); }),
-      fetchTenant('FS2450').then(o => { BOOT.to(84, 'South Bay in'); return normalize(o,'FS2450'); })
+      fetchTenant('FS2025', onPage).then(o => { BOOT.to(84, 'Valley in'); return normalize(o,'FS2025'); }),
+      fetchTenant('FS2450', onPage).then(o => { BOOT.to(84, 'South Bay in'); return normalize(o,'FS2450'); })
     ]);
+    if (earlyTimer) clearTimeout(earlyTimer);
     BOOT.to(90, 'Merging Line Items');
     const seen = new Set(), merged = [];
     for (const r of a.concat(b)) if (!seen.has(r.uid)){ seen.add(r.uid); merged.push(r); }
@@ -5984,6 +6238,7 @@ wireClientExpand();
 wireHoverCard();
 wireLeaderboard();
 wireFullBoards();
+wireFlowTip();
 wireStalled();
 paintSubText();          /* paintFilters only runs on a click; this line has to
                             be right from the first paint */
