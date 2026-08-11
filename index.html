@@ -13,6 +13,28 @@
 <link rel="preconnect" href="https://fs2450.v2api.corebridge.net" crossorigin>
 <link rel="dns-prefetch" href="https://fs2025.v2api.corebridge.net">
 <link rel="dns-prefetch" href="https://fs2450.v2api.corebridge.net">
+<script>
+/* The locations call is the first rung of every fetch: nothing can be swept
+   until it answers. Left in place it waits for the stylesheet, the font and
+   three CDN scripts to download first. Fired here it goes out while the page
+   is still parsing, so by the time the app runs the answer is usually already
+   back. Keys mirror TENANTS below; they are the same two lines. */
+window.__warmLoc = (function(){
+  var T = {
+    FS2025:{base:'https://fs2025.v2api.corebridge.net/api/public/',
+            key:'c71e787e-a4c6-4fcd-b7ee-5be97b640154'},
+    FS2450:{base:'https://fs2450.v2api.corebridge.net/api/public/',
+            key:'4727c0e7-7c1e-4420-8091-61f2e10e01f6'}
+  }, out = {};
+  try{
+    for (var k in T) out[k] = fetch(T[k].base + 'ExSalesCenter/GetLocations',
+      {headers:{'Authorization':'Basic ' + T[k].key}})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; });
+  }catch(e){}
+  return out;
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -1138,7 +1160,8 @@ h1 em{font-style:normal;font-weight:600}
 }
 .cal-nav button:hover{color:var(--ink)}
 
-.cal-wrap{display:flex;gap:30px;align-items:flex-start;margin-top:14px}
+/* the rail matches the month: it ends where the calendar ends, no taller */
+.cal-wrap{display:flex;gap:30px;align-items:stretch;margin-top:14px}
 .cal{
   flex:1 1 auto;min-width:0;
   display:grid;grid-template-columns:repeat(7,minmax(0,1fr));
@@ -1210,11 +1233,74 @@ h1 em{font-style:normal;font-weight:600}
   color:var(--ink-faint);padding-top:1px;
 }
 
+/* ===== THE DAY, AS A TAPE =====
+   One line under the calendar, the width of Monday to Sunday, divided between
+   the centres by the money each holds on the day you have picked. Same weight
+   as the stroke of a stage ring, laid flat. */
+.cal-col{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.cal-tape{margin-top:30px}
+.tp-head{
+  display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+  margin-bottom:14px;
+  font-size:9.5px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--ink-faint);
+}
+.tp-head b{color:var(--ink);font-weight:600}
+.tp-row{display:flex;align-items:flex-end;gap:2px;width:100%}
+.tp-seg{
+  min-width:0;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  transition:flex-grow .5s var(--ease-premium);
+}
+.tp-lab{
+  margin-bottom:7px;min-width:0;
+  overflow:hidden;
+}
+.tp-lab .nm{
+  display:block;
+  font-size:9.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.tp-lab .fig{
+  display:block;margin-top:3px;
+  font-size:12.5px;font-weight:500;color:var(--ink);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.tp-lab .cnt{
+  display:block;margin-top:2px;
+  font-size:9.5px;font-weight:500;letter-spacing:.06em;color:var(--ink-soft);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+/* the tape itself: the same 8px the ring stroke renders at */
+.tp-bar{display:block;height:8px;width:100%}
+.tp-empty{
+  padding:6px 0 0;
+  font-size:11px;font-weight:500;letter-spacing:.05em;color:var(--ink-faint);
+}
+@media (max-width:1100px){
+  .cal-tape{margin-top:22px}
+}
+
+/* The rail must take its height FROM the calendar, never give height TO it.
+   As an ordinary flex child its content set the row height, so a heavy day
+   stretched the whole month taller. Its contents are lifted out of the flow
+   instead: the rail is a fixed-width column of the calendar's height, and the
+   list inside it scrolls. */
 .cal-rail{
   flex:0 0 292px;
   border-left:1px solid var(--rule-soft);
-  padding-left:22px;
   align-self:stretch;
+  position:relative;
+  min-height:0;
+}
+.rl-in{
+  position:absolute;
+  inset:0;
+  padding-left:22px;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
 }
 .cal-rail .rl-head{padding-bottom:14px;border-bottom:1px solid var(--rule-soft)}
 .cal-rail .rl-day{
@@ -1230,7 +1316,12 @@ h1 em{font-style:normal;font-weight:600}
   color:var(--ink-soft);font-variant-numeric:tabular-nums;
 }
 .cal-rail .rl-sum .late{color:var(--red-deep);font-weight:600}
-.cal-rail .rl-list{max-height:560px;overflow:auto}
+.cal-rail .rl-list{
+  flex:1 1 auto;min-height:0;overflow:auto;
+  padding-right:4px;
+}
+.cal-rail .rl-list::-webkit-scrollbar{width:3px}
+.cal-rail .rl-list::-webkit-scrollbar-thumb{background:rgba(14,15,19,0.18)}
 .cal-rail .rl-row{
   display:block;padding:11px 10px 11px 0;
   text-decoration:none;color:inherit;
@@ -1271,6 +1362,8 @@ h1 em{font-style:normal;font-weight:600}
 @media (max-width:1100px){
   .cal-wrap{flex-direction:column}
   .cal-rail{flex:1 1 auto;width:100%;border-left:0;border-top:1px solid var(--rule-soft);padding:18px 0 0}
+  .rl-in{position:static;inset:auto;padding-left:0}
+  .cal-rail .rl-list{max-height:60vh}
 }
 
 /* ===== HOVER CARD ===== */
@@ -1566,7 +1659,29 @@ h1 em{font-style:normal;font-weight:600}
   color:var(--paper);
 }
 .foot-in{max-width:1680px;margin:0 auto}
-.foot-mark{max-width:660px;margin-bottom:64px}
+/* the statement on the left, the note on what the figures mean in the space
+   beside it */
+/* the same four columns as the row beneath, so the note begins exactly where
+   "How often it moves" begins and ends with "How to read the colour" */
+.foot-mark{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0,1fr));
+  gap:44px;
+  margin-bottom:64px;
+}
+.fm-lead{grid-column:1 / span 2}
+.fm-note{grid-column:3 / span 2}
+.fm-note h4{
+  margin:0 0 12px;
+  font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--paper);
+}
+.fm-note p{
+  margin:0;
+  font-size:12px;font-weight:400;line-height:1.75;
+  color:rgba(253,252,250,0.78);
+}
+.fm-note p + p{margin-top:11px}
 .fm-name{
   font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
   color:var(--paper);margin-bottom:18px;
@@ -1602,6 +1717,8 @@ h1 em{font-style:normal;font-weight:600}
 .foot-end .stamp{margin-top:0;color:var(--paper)}
 @media (max-width:1100px){
   .foot-cols{grid-template-columns:repeat(2, minmax(0,1fr));gap:36px}
+  .foot-mark{grid-template-columns:1fr;gap:34px}
+  .fm-lead,.fm-note{grid-column:auto}
 }
 @media (max-width:700px){
   .foot{padding:9vh 20px 44px}
@@ -2241,7 +2358,10 @@ a.num:hover{color:var(--red)}
         </div>
       </div>
       <div class="cal-wrap">
-        <div class="cal" id="cal"></div>
+        <div class="cal-col">
+          <div class="cal" id="cal"></div>
+          <div class="cal-tape" id="calTape"></div>
+        </div>
         <aside class="cal-rail" id="calRail"></aside>
       </div>
       <div class="leader-key" id="leaderKey"></div>
@@ -2316,22 +2436,6 @@ a.num:hover{color:var(--red)}
       <div class="k">Square in the row — the centre</div>
     </div>
     <div class="legend" id="centerLegend"></div>
-
-    <!-- HASN'T MOVED — how long each order has sat in its current stage -->
-    <section class="board" id="stallSec">
-      <div class="panel-header"><div class="sec-title"><h2>Hasn't Moved</h2></div>
-        <span class="board-sub" id="stallSub">Orders sitting in the same stage day after day. Ageing counts from when the order was raised; this counts from the last time it actually moved — which is the thing you can do something about.</span></div>
-      <div class="stall-bar">
-        <div class="seg" id="stallWin" role="group" aria-label="Days without moving">
-          <button data-n="3">3 Days</button>
-          <button data-n="7" aria-pressed="true">7 Days</button>
-          <button data-n="14">14 Days</button>
-          <button data-n="30">30 Days</button>
-        </div>
-        <span class="stall-note" id="stallNote"></span>
-      </div>
-      <div class="score" id="stallBoard"></div>
-    </section>
 
     <!-- AGING MATRIX -->
     <section class="board" id="agingSec">
@@ -2445,6 +2549,22 @@ a.num:hover{color:var(--red)}
       <div class="rise score" id="ctrBoard"></div>
     </section>
 
+    <!-- HASN'T MOVED — how long each order has sat in its current stage -->
+    <section class="board" id="stallSec">
+      <div class="panel-header"><div class="sec-title"><h2>Hasn't Moved</h2></div>
+        <span class="board-sub" id="stallSub">Orders sitting in the same stage day after day. Ageing counts from when the order was raised; this counts from the last time it actually moved — which is the thing you can do something about.</span></div>
+      <div class="stall-bar">
+        <div class="seg" id="stallWin" role="group" aria-label="Days without moving">
+          <button data-n="3">3 Days</button>
+          <button data-n="7" aria-pressed="true">7 Days</button>
+          <button data-n="14">14 Days</button>
+          <button data-n="30">30 Days</button>
+        </div>
+        <span class="stall-note" id="stallNote"></span>
+      </div>
+      <div class="score" id="stallBoard"></div>
+    </section>
+
     <!-- WHERE THE MONEY SITS -->
     <section class="board metrics-panel" id="metricsSec">
       <div class="panel-header"><div class="sec-title"><h2>Where The Money Sits</h2></div>
@@ -2459,11 +2579,22 @@ a.num:hover{color:var(--red)}
   <footer class="foot" id="foot">
     <div class="foot-in">
       <div class="foot-mark">
-        <div class="fm-name">FASTSIGNS <span>·</span> HELM</div>
-        <p class="fm-line">A production board for five centres across two districts,
-          built on live CoreBridge data. Every figure on this page is work that is
-          open right now, not a forecast and not a record of what has already
-          shipped.</p>
+        <div class="fm-lead">
+          <div class="fm-name">FASTSIGNS <span>·</span> HELM</div>
+          <p class="fm-line">A production board for five centres across two districts,
+            built on live CoreBridge data. Every figure on this page is work that is
+            open right now, not a forecast and not a record of what has already
+            shipped.</p>
+        </div>
+        <div class="fm-note">
+          <h4>What the money figures are</h4>
+          <p>Every price here is the product price before tax, so a figure matches the
+            subtotal on the order in CoreBridge rather than the invoice total, which
+            carries tax on top of it.</p>
+          <p>An order that is partly built shows only the products still open. It reads
+            lower than its invoice by the value of whatever has already been finished,
+            which is the point: this board counts work outstanding, not work sold.</p>
+        </div>
       </div>
 
       <div class="foot-cols">
@@ -2607,7 +2738,13 @@ async function cbPost(tk, path, body){
 }
 async function getLocations(tk){
   if (locCache[tk]) return locCache[tk];
-  const raw = asArr(await cbGet(tk,'ExSalesCenter/GetLocations'));
+  /* the head script started this before the app existed; take its answer if
+     it arrived, and fall back to a fresh call if it failed */
+  let warm = null;
+  try { warm = window.__warmLoc && await window.__warmLoc[tk]; } catch(_){ warm = null; }
+  /* an empty warm answer is not an answer — fall back rather than sweep nothing */
+  let raw = asArr(warm);
+  if (!raw.length) raw = asArr(await cbGet(tk,'ExSalesCenter/GetLocations'));
   locCache[tk] = raw.map(l => ({
     id: l.id ?? l.Id ?? l.locationId,
     name: String(l.name ?? l.Name ?? l.locationName ?? '').replace(/FASTSIGNS of /i,'').trim()
@@ -4467,7 +4604,7 @@ function scoreHead(first){
   return `<div class="sc hd">${first}</div>
     <div class="sc hd r">Open</div>
     <div class="sc hd r">Overdue</div>
-    <div class="sc hd r"></div>
+    <div class="sc hd r">Against Worst</div>
     <div class="sc hd r">% Late</div>
     <div class="sc hd r">Orders</div>
     <div class="sc hd r">Late</div>
@@ -5540,6 +5677,7 @@ function renderLeaderboard(rows){
   };
 
   rail.innerHTML = `
+    <div class="rl-in">
     <div class="rl-head">
       <div class="rl-day">${pd.toLocaleDateString([], {weekday:'long'})}${
         CAL_KEY(pd)===todayKey ? ' \u00b7 today' : ''}</div>
@@ -5551,7 +5689,60 @@ function renderLeaderboard(rows){
     </div>
     <div class="rl-list">${
       list.length ? list.map(rowHTML).join('')
-                  : `<div class="rl-empty">Nothing falls due on this day.</div>`}</div>`;
+                  : `<div class="rl-empty">Nothing falls due on this day.</div>`}</div>
+    </div>`;
+
+  /* ---- the day as a tape: each centre's share of the money on it ---- */
+  const tape = document.getElementById('calTape');
+  if (tape){
+    const byCentre = CENTERS.map(c => {
+      const mine = list.filter(o => o.center === c.name);
+      return {
+        name: c.name, color: c.color,
+        value: mine.reduce((a,o) => a + o.value, 0),
+        orders: mine.length,
+        items: mine.reduce((a,o) => a + NUM(o.count), 0)
+      };
+    }).filter(x => x.value > 0 || x.orders > 0);
+
+    const dayTotal = byCentre.reduce((a,x) => a + x.value, 0);
+    const dayLabel = pd.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+
+    if (!byCentre.length){
+      tape.innerHTML =
+        `<div class="tp-head"><span>${esc(dayLabel)}</span></div>
+         <div class="tp-empty">Nothing falls due on this day.</div>`;
+    } else {
+      /* a centre holding almost nothing still needs a readable sliver, so the
+         smallest segments are floored and the rest give up the difference */
+      const FLOOR = 0.045;
+      let share = byCentre.map(x => dayTotal > 0 ? x.value/dayTotal : 1/byCentre.length);
+      for (let pass=0; pass<4; pass++){
+        const under = share.map(v => v < FLOOR);
+        const owed  = share.reduce((a,v,k) => a + (under[k] ? FLOOR - v : 0), 0);
+        if (owed <= 1e-6) break;
+        const free = share.reduce((a,v,k) => a + (under[k] ? 0 : v), 0);
+        if (free <= owed) break;
+        share = share.map((v,k) => under[k] ? FLOOR : v - owed*(v/free));
+      }
+
+      tape.innerHTML =
+        `<div class="tp-head"><span>${esc(dayLabel)}</span>
+           <span><b>${esc(money(dayTotal))}</b> across ${byCentre.length}
+             ${byCentre.length === 1 ? 'Centre' : 'Centres'}</span></div>
+         <div class="tp-row">` +
+        byCentre.map((x,k) => `
+          <div class="tp-seg" style="flex:${(share[k]*1000).toFixed(1)} 1 0">
+            <span class="tp-lab">
+              <span class="nm">${esc(x.name)}</span>
+              <span class="fig">${esc(money(x.value))}</span>
+              <span class="cnt">${x.orders} ${x.orders===1?'Order':'Orders'} \u00b7 ${x.items} ${x.items===1?'Item':'Items'}</span>
+            </span>
+            <i class="tp-bar" style="background:${x.color}"></i>
+          </div>`).join('') +
+        `</div>`;
+    }
+  }
 
   /* ---- key and caption ---- */
   const key = document.getElementById('leaderKey');
@@ -5990,13 +6181,16 @@ const BOOT = (() => {
     if (!raf) raf = requestAnimationFrame(tick);
   };
 
-  /* the free run: 0 → 70 over about a second and a half, decelerating */
+  /* The free run now goes most of the way: 0 → 92 in under a second,
+     decelerating as it climbs. The last eight points are the real work, so
+     the counter spends its time where the waiting actually is rather than
+     crawling through the middle. */
   const t0 = performance.now();
-  const RUN = 1500;
+  const RUN = 900;
   (function climb(){
-    if (finished || target >= 70) return;
+    if (finished || target >= 92) return;
     const k = Math.min(1, (performance.now() - t0)/RUN);
-    to(70 * (1 - Math.pow(1 - k, 3)));
+    to(92 * (1 - Math.pow(1 - k, 3)));
     if (k < 1) requestAnimationFrame(climb);
   })();
 
@@ -6005,8 +6199,8 @@ const BOOT = (() => {
      them. And if the whole thing hangs, the page is handed over anyway rather
      than leaving a counter on screen forever. */
   const creep = setInterval(() => {
-    if (finished || target >= 88){ clearInterval(creep); return; }
-    to(target + (88 - target) * 0.06);
+    if (finished || target >= 97){ clearInterval(creep); return; }
+    to(target + (97 - target) * 0.05);
   }, 700);
   setTimeout(() => { if (!finished) BOOT_RELEASE(); }, 30000);
 
@@ -6031,22 +6225,25 @@ const BOOT = (() => {
 })();
 
 async function load(force){
-  if (!force && memCache && Date.now()-memCache.at < CACHE_TTL){
-    /* Real data from last time is on hand — paint it and stop. No live fetch,
-       no second render: that's the whole point of the cache. autoRefresh's
-       own interval (and the visibility check below, seeded with this
-       timestamp) still bring it current once CACHE_TTL passes. */
-    ROWS = memCache.rows; demoMode = false; render(); stamp(new Date(memCache.at));
-    BOOT.done();
-    lastLoad = memCache.at;
-    return;
-  }
-  if (!ROWS.length){
+  /* Instant on every visit after the first: whatever was last fetched is
+     painted straight away and the counter stands down, then the fresh set is
+     brought in behind it and swapped in without the reader waiting. Only a
+     genuinely cold browser ever sees the skeleton. */
+  let quiet = false;
+  if (!force && memCache && memCache.rows && memCache.rows.length){
+    ROWS = memCache.rows; demoMode = false;
+    render(); stamp(new Date(memCache.at));
+    trendSave(ROWS); renderTrend();
+    stallSave(ROWS); renderStalled(chartRows());
+    BOOT.done(); toTopOnce();
+    if (Date.now() - memCache.at < CACHE_TTL){ lastLoad = memCache.at; return; }
+    quiet = true;                       /* stale: refresh without disturbing it */
+  } else if (!ROWS.length){
     renderSkeleton();
   }
   DIAG = [];
   try{
-    BOOT.to(72, 'Reaching CoreBridge');
+    BOOT.to(92, 'Reaching CoreBridge');
 
     /* Early paint: every page that lands is normalised and drawn straight
        away, so the board is on screen from the first results rather than
@@ -6060,7 +6257,7 @@ async function load(force){
       ROWS = early.slice();
       demoMode = false;
       render();
-      BOOT.to(Math.min(94, 74 + early.length/14), 'Drawing what has landed');
+      BOOT.to(Math.min(98, 93 + early.length/120), 'Drawing what has landed');
     };
     const onPage = (raw, tk) => {
       if (!cold) return;
@@ -6074,18 +6271,25 @@ async function load(force){
     };
 
     const [a,b] = await Promise.all([
-      fetchTenant('FS2025', onPage).then(o => { BOOT.to(84, 'Valley in'); return normalize(o,'FS2025'); }),
-      fetchTenant('FS2450', onPage).then(o => { BOOT.to(84, 'South Bay in'); return normalize(o,'FS2450'); })
+      fetchTenant('FS2025', onPage).then(o => { BOOT.to(95, 'Valley in'); return normalize(o,'FS2025'); }),
+      fetchTenant('FS2450', onPage).then(o => { BOOT.to(95, 'South Bay in'); return normalize(o,'FS2450'); })
     ]);
     if (earlyTimer) clearTimeout(earlyTimer);
-    BOOT.to(90, 'Merging Line Items');
+    BOOT.to(97, 'Merging Line Items');
     const seen = new Set(), merged = [];
     for (const r of a.concat(b)) if (!seen.has(r.uid)){ seen.add(r.uid); merged.push(r); }
     if (!merged.length) throw new Error('API responded but returned 0 usable line items');
     ROWS = merged; demoMode = false; memCache = {at:Date.now(), rows:merged};
     saveCachedData(merged);
-    setNotice(''); render(); stamp(new Date()); toTopOnce();
-    BOOT.to(97, 'Drawing');
+    const keepY = quiet ? (window.scrollY || document.documentElement.scrollTop || 0) : null;
+    setNotice(''); render(); stamp(new Date());
+    if (keepY === null) toTopOnce();
+    else {
+      const put = () => { if (window.lenis) lenis.scrollTo(keepY, {immediate:true});
+                          else scrollTo(0, keepY); };
+      put(); requestAnimationFrame(put);
+    }
+    BOOT.to(99, 'Drawing');
     trendSave(ROWS); renderTrend();
     stallSave(ROWS); renderStalled(chartRows());
     lastLoad = Date.now();
