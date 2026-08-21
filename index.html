@@ -105,10 +105,8 @@ body{
   display:grid;
   grid-template-columns:1fr auto 1fr;
   align-items:center;
-  max-width:var(--tb-measure, 1280px);
-  margin:0 auto;
   width:100%;
-  padding:0 40px;
+  padding:0 54px;
   overflow:hidden;
   transition:height .5s var(--ease-premium), opacity .4s var(--ease-premium),
              padding .5s var(--ease-premium);
@@ -176,16 +174,14 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:18px;
-  max-width:var(--tb-measure, 1280px);
-  margin:0 auto;
   width:100%;
-  padding:0 40px;
+  padding:0 54px;
 }
-/* the hairline spacer between the two layers — spans the centred measure,
-   fades out only when layer 1 has fully retracted so it never floats alone */
+/* the hairline spacer between the two layers — spans the full width, fading
+   out only when layer 1 has fully retracted so it never floats alone */
 .tb-l2::before{
   content:'';
-  position:absolute;left:40px;right:40px;top:0;height:1px;
+  position:absolute;left:54px;right:54px;top:0;height:1px;
   background:currentColor;opacity:.05;
   transition:opacity .4s var(--ease-premium);
 }
@@ -281,7 +277,7 @@ body{
   /* the white ground spans the FULL width of the header; the buttons stay
      centred within it via justify-content, sitting where they do now */
   width:100%;
-  padding:0 40px;
+  padding:0 54px;
   /* one layer tall — the same height as the two above it, so all three read
      as bands of one masthead */
   height:0;
@@ -2440,7 +2436,7 @@ body.kiosk .g-track{cursor:default !important}
 body.kiosk .scope-toggle,
 body.kiosk .scroll-spacer{display:none}
 /* a wall screen never retracts its own masthead */
-body.kiosk .topbar.retracted .tb-l1{height:var(--topbar-l1,40px);opacity:1;padding:0 40px;pointer-events:auto}
+body.kiosk .topbar.retracted .tb-l1{height:var(--topbar-l1,40px);opacity:1;padding:0 54px;pointer-events:auto}
 
 /* ===== SALESPERSON SIDEBAR =====
    Rolls-Royce's slide-in menu, in Helm's own paper-and-ink language. A
